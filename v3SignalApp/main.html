@@ -4456,7 +4456,7 @@
         function buildLineChart(d) {
             destroyChart('lineChart');
             const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
-            statsCharts.line = new Chart(ctx, { type: 'line', data: { labels: d.line.labels, datasets: [{ label: t('stat_pending'), data: d.line.submitted, borderColor: COLORS.mid, backgroundColor: 'rgba(83,141,34,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }, { label: t('stat_done'), data: d.line.resolved, borderColor: COLORS.light, backgroundColor: 'rgba(170,213,118,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { family: 'Tajawal', size: 12 }, boxWidth: 10, padding: 14 } } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 } } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 }, stepSize: 1 } } } } });
+            statsCharts.lineChart = new Chart(ctx, { type: 'line', data: { labels: d.line.labels, datasets: [{ label: t('stat_pending'), data: d.line.submitted, borderColor: COLORS.mid, backgroundColor: 'rgba(83,141,34,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }, { label: t('stat_done'), data: d.line.resolved, borderColor: COLORS.light, backgroundColor: 'rgba(170,213,118,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { family: 'Tajawal', size: 12 }, boxWidth: 10, padding: 14 } } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 } } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 }, stepSize: 1 } } } } });
         }
         function buildStatusDonut(d) {
             destroyChart('statusDonut');
@@ -4464,7 +4464,7 @@
             const el = document.getElementById('donut-total'); if (el) el.textContent = total;
             const labels = [t('status_pending'), t('status_inprogress'), t('status_complete')], colors = [COLORS.yellow, COLORS.mid, COLORS.green];
             const ctx = document.getElementById('statusDonut')?.getContext('2d'); if (!ctx) return;
-            statsCharts.status = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '68%', plugins: { legend: { display: false } } } });
+            statsCharts.statusDonut = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '68%', plugins: { legend: { display: false } } } });
             document.getElementById('statusLegend').innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
         }
         function buildRoomBars(d) {
@@ -4477,7 +4477,7 @@
             const el = document.getElementById('type-total'); if (el) el.textContent = total;
             const labels = [t('defect_elec'), t('defect_network'), t('defect_clean'), t('defect_broken'), t('defect_other')], colors = [COLORS.yellow, COLORS.mid, COLORS.green, COLORS.red, COLORS.purple];
             const ctx = document.getElementById('typeDonut')?.getContext('2d'); if (!ctx) return;
-            statsCharts.type = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { display: false } } } });
+            statsCharts.typeDonut = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { display: false } } } });
             document.getElementById('typeLegend').innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
         }
         function buildHeatMap(d) {
@@ -4542,27 +4542,33 @@
         }
 
         async function preprocessImage(imgDataUrl) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 640;
-                    canvas.height = 640;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, 640, 640);
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 640;
+                        canvas.height = 640;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, 640, 640);
 
-                    const imageData = ctx.getImageData(0, 0, 640, 640).data;
-                    const red = [], green = [], blue = [];
+                        const imageData = ctx.getImageData(0, 0, 640, 640).data;
+                        const tensorData = new Float32Array(3 * 640 * 640);
+                        
+                        let j = 0;
+                        for (let i = 0; i < imageData.length; i += 4) {
+                            tensorData[j] = imageData[i] / 255.0;            // R
+                            tensorData[j + 409600] = imageData[i + 1] / 255.0; // G
+                            tensorData[j + 819200] = imageData[i + 2] / 255.0; // B
+                            j++;
+                        }
 
-                    for (let i = 0; i < imageData.length; i += 4) {
-                        red.push(imageData[i] / 255.0);
-                        green.push(imageData[i + 1] / 255.0);
-                        blue.push(imageData[i + 2] / 255.0);
+                        resolve(new ort.Tensor('float32', tensorData, [1, 3, 640, 640]));
+                    } catch (e) {
+                        reject(e);
                     }
-
-                    const tensorData = new Float32Array([...red, ...green, ...blue]);
-                    resolve(new ort.Tensor('float32', tensorData, [1, 3, 640, 640]));
                 };
+                img.onerror = reject;
                 img.src = imgDataUrl;
             });
         }
@@ -4656,36 +4662,14 @@
                         const yoloResults = await detectWithYolo(report.imageDataUrl || `data:image/jpeg;base64,${report.imageBase64Raw}`);
                         if (yoloResults && yoloResults.length > 0) {
                             annotations = yoloResults;
-                            aiSource = 'Local';
+                            aiSource = 'Local YOLO';
                             console.log("AI: Used Local YOLOv8", annotations);
+                        } else {
+                            console.log("AI: Local YOLOv8 ran but found no objects.");
+                            aiSource = 'Local YOLO (No objects)';
                         }
                     } catch (err) {
-                        console.warn("Local YOLO failed, trying Cloud Vision...", err);
-                    }
-                }
-
-                // 3. Fallback to Google Vision if both failed
-                if (annotations.length === 0) {
-                    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            requests: [{
-                                image: { content: report.imageBase64Raw },
-                                features: [{ type: "LABEL_DETECTION", maxResults: 15 }]
-                            }]
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (!data.error) {
-                        annotations = (data.responses?.[0]?.labelAnnotations || []).map(l => ({
-                            desc: l.description.toLowerCase(),
-                            score: l.score
-                        }));
-                        usedCloud = true;
-                        aiSource = 'Cloud (Vision)';
-                        console.log("AI: Used Cloud Vision", annotations);
+                        console.warn("Local YOLO failed...", err);
                     }
                 }
 
