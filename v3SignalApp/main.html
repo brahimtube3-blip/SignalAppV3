@@ -4702,7 +4702,9 @@
                 objectKeywords = [...new Set([...objectKeywords, ...(AI_KEYWORDS[defectClass] || [])])];
 
                 let matchScore = 0;
-                if (objectKeywords.length > 0) {
+                if (annotations.length === 0) {
+                    matchScore = 0; // Suspicious if NO objects detected
+                } else if (objectKeywords.length > 0) {
                     const matchingAnnotations = annotations.filter(ann =>
                         objectKeywords.some(kw => ann.desc.toLowerCase().includes(kw))
                     );
@@ -4711,14 +4713,18 @@
                         matchScore = Math.round(Math.max(...matchingAnnotations.map(a => a.score)) * 100);
                     }
                 } else {
-                    matchScore = 50;
+                    matchScore = 50; // We don't have keywords for this defect
                 }
 
                 const isSpam = matchScore < 40;
                 const aiSourceFinal = aiSource;
 
                 if (window._db && window._db.updateReportAI) {
-                    await window._db.updateReportAI(report.firestoreId, true, isSpam, labels, matchScore, aiSourceFinal);
+                    try {
+                        await window._db.updateReportAI(report.firestoreId, true, isSpam, labels, matchScore, aiSourceFinal);
+                    } catch (fbError) {
+                        console.warn("Could not save AI result. Check Firestore rules.", fbError.message);
+                    }
                 }
 
                 report.aiCheckDone = true;
