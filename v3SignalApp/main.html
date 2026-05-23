@@ -9,7 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700;800;900&display=swap"
         rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+
     <style>
         :root {
             --primary: #143601;
@@ -3673,6 +3673,7 @@
                         id: data.equipmentId || data.studentUid?.slice(-6) || d.id.slice(-6),
                         room: data.hallName || data.hallId || '—',
                         hallType: data.hallType || 'TD',
+                        category: data.category || '',
                         defect: data.defect || '—',
                         reason: data.reason || '—',
                         status: data.status || 'pending',
@@ -3831,6 +3832,8 @@
                 defect_elec: "انقطاع كهرباء", defect_network: "انقطاع إنترنت",
                 defect_clean: "نظافة", defect_broken: "كسر / تلف", defect_other: "أخرى",
                 "Desk": "مكتب", "Chair": "كرسي", "Computer": "حاسوب", "Light": "إضاءة", "AC": "مكيف هواء", "Door": "باب", "Window": "نافذة", "Projector": "جهاز عرض", "Room": "القاعة", "Trash Bin": "سلة مهملات", "Smell / Danger": "رائحة / خطر", "Floor": "الأرضية", "Mouse": "فأرة", "Keyboard": "لوحة مفاتيح", "Cable": "كابل", "Power": "كهرباء",
+                "chair": "كرسي", "table": "طاولة", "whiteboard": "سبورة بيضاء", "desk": "مكتب", "trash_can": "سلة مهملات", "ceiling": "سقف", "floor": "أرضية", "ac": "مكيف هواء", "projector": "جهاز عرض", "electricity": "كهرباء", "power_outlet": "مأخذ كهرباء", "glass": "زجاج", "door": "باب", "window": "نافذة", "hdmi_cable": "كابل HDMI", "computer": "حاسوب", "monitor": "شاشة", "mouse": "فأرة", "keyboard": "لوحة مفاتيح", "ethernet_cable": "كابل إيثرنت", "computer_desk": "مكتب حاسوب", "other": "أخرى",
+                "broken_m": "مكسور", "broken_f": "مكسورة", "missing_m": "مفقود", "missing_f": "مفقودة", "malfunctioning_m": "لا يعمل", "malfunctioning_f": "لا تعمل", "slippery": "زلق", "dirty": "متسخ", "damaged": "تالف", "remote_missing": "جهاز تحكم مفقود", "disconnected": "منقطع", "glitch": "خلل", "door_glass_broken": "زجاج باب مكسور", "window_glass_broken": "زجاج نافذة مكسور", "room_glass_broken": "زجاج قاعة مكسور", "lock_broken": "قفل مكسور", "full": "ممتلئ",
                 "Broken": "مكسور", "Missing": "مفقود", "Damaged Surface": "سطح تالف", "Unstable / Wobbly": "غير مستقر / يهتز", "Dirty": "متسخ", "Scratched": "مخدوش", "Wrong Size": "حجم خاطئ", "Torn / Ripped": "ممزق", "Leg Broken": "رجل مكسورة", "No Back Support": "لا يوجد دعم للظهر", "Not Working": "لا يعمل", "Broken Screen": "شاشة مكسورة", "Stolen": "مسروق", "Missing Parts": "أجزاء مفقودة", "Slow / Freezing": "بطيء / يتجمد", "No Internet": "لا يوجد إنترنت", "Virus / Malware": "فيروس / برامج ضارة", "Overheating": "ارتفاع حرارة", "No Sound": "لا يوجد صوت", "Flickering": "يرمش", "Broken Bulb": "مصباح مكسور", "Missing Fixture": "تركيب مفقود", "Switch Broken": "مفتاح مكسور", "Too Dim": "خافت جداً", "Too Cold": "بارد جداً", "Too Hot / No Cool": "حار جداً / لا يبرد", "Leaking Water": "تسرب مياه", "Strange Noise": "صوت غريب", "Bad Smell": "رائحة سيئة", "Remote Missing": "جهاز التحكم مفقود", "Filter Dirty": "الفلتر متسخ", "Lock Broken": "القفل مكسور", "Does Not Close": "لا يغلق", "Hinge Broken": "المفصلة مكسورة", "Glass Broken": "الزجاج مكسور", "Noisy": "مزعج", "Missing Glass": "زجاج مفقود", "Does Not Open": "لا يفتح", "Frame Damaged": "الإطار تالف", "Leaking Rain": "تسرب أمطار", "Curtain Missing": "ستارة مفقودة", "No Image Output": "لا يوجد صورة", "Blurry Image": "صورة ضبابية", "Cable Missing": "كابل مفقود", "Not Clean": "غير نظيف", "Too Hot": "حار جداً", "Paint Peeling": "تقشر الطلاء", "Insect / Pest": "حشرات / آفات", "Ceiling Damage": "تلف في السقف", "No Ventilation": "لا يوجد تهوية", "Full": "ممتلئ", "Smells Bad": "رائحة كريهة", "Gas Smell": "رائحة غاز", "Fire Smell": "رائحة حريق", "Chemical Smell": "رائحة كيميائية", "Not Sure": "غير متأكد", "Missing Tile": "بلاطة مفقودة", "Water Spill": "انسكاب مياه", "Slippery": "زلق", "Scroll Broken": "عجلة التمرير مكسورة", "No Connection": "لا يوجد اتصال", "Keys Broken": "أزرار مكسورة", "Dirty / Sticky": "متسخ / لزج", "Broken / Cut": "مكسور / مقطوع", "Wrong Type": "نوع خاطئ", "Loose / Unstable": "مرتخي / غير مستقر", "Burn Marks": "آثار حرق", "No Power": "لا توجد كهرباء", "Socket Broken": "المقبس مكسور", "Tripped Breaker": "القاطع مفصول", "Burn Smell": "رائحة احتراق", "Exposed Wires": "أسلاك مكشوفة", "Power Strip Missing": "مشترك كهربائي مفقود",
                 sum_total: "إجمالي القاعات", sum_good: "بحالة جيدة", sum_warn: "تحتاج متابعة", sum_danger: "في خطر",
                 fil_good: "جيدة", fil_warn: "تحذير", fil_danger: "خطر",
@@ -3895,6 +3898,8 @@
                 room_breakdown: "Signalements par salle", leaderboard_title: "🏆 Meilleurs rapporteurs",
                 defect_elec: "Panne électrique", defect_network: "Panne Internet", defect_clean: "Propreté", defect_broken: "Casse", defect_other: "Autre",
                 "Desk": "Bureau", "Chair": "Chaise", "Computer": "Ordinateur", "Light": "Lumière", "AC": "Climatiseur", "Door": "Porte", "Window": "Fenêtre", "Projector": "Projecteur", "Room": "Salle", "Trash Bin": "Poubelle", "Smell / Danger": "Odeur / Danger", "Floor": "Plancher", "Mouse": "Souris", "Keyboard": "Clavier", "Cable": "Câble", "Power": "Électricité",
+                "chair": "Chaise", "table": "Table", "whiteboard": "Tableau blanc", "desk": "Bureau", "trash_can": "Poubelle", "ceiling": "Plafond", "floor": "Plancher", "ac": "Climatiseur", "projector": "Projecteur", "electricity": "Électricité", "power_outlet": "Prise électrique", "glass": "Verre", "door": "Porte", "window": "Fenêtre", "hdmi_cable": "Câble HDMI", "computer": "Ordinateur", "monitor": "Écran", "mouse": "Souris", "keyboard": "Clavier", "ethernet_cable": "Câble Ethernet", "computer_desk": "Bureau informatique", "other": "Autre",
+                "broken_m": "Cassé", "broken_f": "Cassée", "missing_m": "Manquant", "missing_f": "Manquante", "malfunctioning_m": "Défectueux", "malfunctioning_f": "Défectueuse", "slippery": "Glissant", "dirty": "Sale", "damaged": "Endommagé", "remote_missing": "Télécommande manquante", "disconnected": "Déconnecté", "glitch": "Problème", "door_glass_broken": "Vitre de porte cassée", "window_glass_broken": "Vitre de fenêtre cassée", "room_glass_broken": "Vitre de salle cassée", "lock_broken": "Serrure cassée", "full": "Pleine",
                 "Broken": "Cassé", "Missing": "Manquant", "Damaged Surface": "Surface Endommagée", "Unstable / Wobbly": "Instable / Bancal", "Dirty": "Sale", "Scratched": "Rayé", "Wrong Size": "Mauvaise Taille", "Torn / Ripped": "Déchiré", "Leg Broken": "Pied Cassé", "No Back Support": "Pas de Support Arrière", "Not Working": "Ne Fonctionne Pas", "Broken Screen": "Écran Cassé", "Stolen": "Volé", "Missing Parts": "Pièces Manquantes", "Slow / Freezing": "Lent / Se Bloque", "No Internet": "Pas d'Internet", "Virus / Malware": "Virus / Malware", "Overheating": "Surchauffe", "No Sound": "Pas de Son", "Flickering": "Clignotant", "Broken Bulb": "Ampoule Cassée", "Missing Fixture": "Fixation Manquante", "Switch Broken": "Interrupteur Cassé", "Too Dim": "Trop Sombre", "Too Cold": "Trop Froid", "Too Hot / No Cool": "Trop Chaud / Pas de Froid", "Leaking Water": "Fuite d'Eau", "Strange Noise": "Bruit Étrange", "Bad Smell": "Mauvaise Odeur", "Remote Missing": "Télécommande Manquante", "Filter Dirty": "Filtre Sale", "Lock Broken": "Serrure Cassée", "Does Not Close": "Ne se Ferme Pas", "Hinge Broken": "Charnière Cassée", "Glass Broken": "Verre Cassé", "Noisy": "Bruyant", "Missing Glass": "Verre Manquant", "Does Not Open": "Ne s'Ouvre Pas", "Frame Damaged": "Cadre Endommagé", "Leaking Rain": "Fuite de Pluie", "Curtain Missing": "Rideau Manquant", "No Image Output": "Pas d'Image", "Blurry Image": "Image Floue", "Cable Missing": "Câble Manquant", "Not Clean": "Pas Propre", "Too Hot": "Trop Chaud", "Paint Peeling": "Peinture Écaillée", "Insect / Pest": "Insectes / Nuisibles", "Ceiling Damage": "Plafond Endommagé", "No Ventilation": "Pas de Ventilation", "Full": "Plein", "Smells Bad": "Sent Mauvais", "Gas Smell": "Odeur de Gaz", "Fire Smell": "Odeur de Feu", "Chemical Smell": "Odeur Chimique", "Not Sure": "Pas Sûr", "Missing Tile": "Carreau Manquant", "Water Spill": "Déversement d'Eau", "Slippery": "Glissant", "Scroll Broken": "Molette Cassée", "No Connection": "Pas de Connexion", "Keys Broken": "Touches Cassées", "Dirty / Sticky": "Sale / Collant", "Broken / Cut": "Cassé / Coupé", "Wrong Type": "Mauvais Type", "Loose / Unstable": "Lâche / Instable", "Burn Marks": "Marques de Brûlure", "No Power": "Pas de Courant", "Socket Broken": "Prise Cassée", "Tripped Breaker": "Disjoncteur Déclenché", "Burn Smell": "Odeur de Brûlé", "Exposed Wires": "Fils Exposés", "Power Strip Missing": "Multiprise Manquante",
                 sum_total: "Total salles", sum_good: "En bon état", sum_warn: "À surveiller", sum_danger: "En danger",
                 fil_good: "Bon état", fil_warn: "Avertissement", fil_danger: "Danger",
@@ -3952,6 +3957,8 @@
                 lbl_room: "Room", lbl_type: "Defect Type", lbl_status: "Status", lbl_reporter: "Reporter", lbl_date: "Date", lbl_note: "Note", lbl_img: "Attached Image",
                 room_breakdown: "Reports by Room", leaderboard_title: "🏆 Top Reporters",
                 defect_elec: "Power Outage", defect_network: "Internet Outage", defect_clean: "Cleanliness", defect_broken: "Broken / Damage", defect_other: "Other",
+                "chair": "Chair", "table": "Table", "whiteboard": "Whiteboard", "desk": "Desk", "trash_can": "Trash Can", "ceiling": "Ceiling", "floor": "Floor", "ac": "Air Conditioner", "projector": "Projector", "electricity": "Electricity", "power_outlet": "Power Outlet", "glass": "Glass", "door": "Door", "window": "Window", "hdmi_cable": "HDMI Cable", "computer": "Computer", "monitor": "Monitor", "mouse": "Mouse", "keyboard": "Keyboard", "ethernet_cable": "Ethernet Cable", "computer_desk": "Computer Desk", "other": "Other",
+                "broken_m": "Broken", "broken_f": "Broken", "missing_m": "Missing", "missing_f": "Missing", "malfunctioning_m": "Not Working", "malfunctioning_f": "Not Working", "slippery": "Slippery", "dirty": "Dirty", "damaged": "Damaged", "remote_missing": "Remote Missing", "disconnected": "Disconnected", "glitch": "Glitch", "door_glass_broken": "Door Glass Broken", "window_glass_broken": "Window Glass Broken", "room_glass_broken": "Room Glass Broken", "lock_broken": "Lock Broken", "full": "Full",
                 sum_total: "Total Rooms", sum_good: "In Good Condition", sum_warn: "Need Attention", sum_danger: "Dangerous",
                 fil_good: "Good", fil_warn: "Warning", fil_danger: "Danger",
                 legend_title: "Color legend:", leg_good: "Good — no reports", leg_warn: "Warning — 1-2", leg_danger: "Danger — 3+", leg_idle: "Inactive",
@@ -4189,7 +4196,9 @@
             tbody.innerHTML = filtered.map((r, idx) => {
                 const cls = getDefectClass(r.defect);
                 const emoji = getDefectEmoji(r.defect);
-                const localizedDefect = t(r.defect) + (r.reason && r.reason !== '—' ? ` - ${t(r.reason)}` : '');
+                const categoryName = r.category ? t(r.category) : '';
+                const defectName = t(r.defect);
+                const localizedDefect = (categoryName && categoryName !== r.category ? categoryName + ' — ' + defectName : defectName) + (r.reason && r.reason !== '—' ? ` (${t(r.reason)})` : '');
                 let ab = `<button class="btn-sm btn-ghost" onclick="openReportModal('${r.firestoreId}')">${t('btn_view')}</button>`;
                 if (r.status === 'pending') ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
                 if (r.status === 'inprogress') {
@@ -4511,252 +4520,6 @@
         }
         function setPeriod(el, p) { document.querySelectorAll('.pb').forEach(b => b.classList.remove('active')); el.classList.add('active'); statsPeriod = p; buildStats(); }
 
-        /* ═══ AI SPAM DETECTION ═══ */
-        const VISION_API_KEY = "AIzaSyA6qNyPBXjp8z4HmGO1x49FL5gT9Adw_U8";
-
-        // YOLOv8 COCO Classes
-        const YOLO_CLASSES = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"];
-
-        const AI_KEYWORDS = {
-            'elec': ['wire', 'cable', 'electrical', 'socket', 'plug', 'power', 'light', 'bulb', 'electricity', 'tv', 'laptop', 'remote', 'cell phone'],
-            'network': ['router', 'cable', 'wire', 'ethernet', 'switch', 'network', 'modem', 'laptop', 'computer'],
-            'clean': ['dirt', 'stain', 'mess', 'garbage', 'trash', 'waste', 'spill', 'liquid', 'dust', 'cleaning', 'litter', 'bottle', 'cup', 'bowl'],
-            'broken': ['broken', 'damaged', 'crack', 'shattered', 'destroyed', 'ruined', 'chair', 'bed', 'dining table', 'desk'],
-            'other': [],
-            'Desk': ['desk', 'table', 'office', 'dining table', 'laptop', 'computer'],
-            'Chair': ['chair', 'seat', 'stool', 'couch'],
-            'Computer': ['computer', 'laptop', 'desktop', 'screen', 'monitor', 'pc', 'electronics', 'tv', 'mouse', 'keyboard'],
-            'Light': ['light', 'bulb', 'lamp', 'lighting'],
-            'AC': ['air conditioner', 'vent', 'hvac', 'cooling'],
-            'Door': ['door', 'entrance', 'handle', 'knob'],
-            'Window': ['window', 'glass', 'frame'],
-            'Projector': ['projector', 'lens', 'projection', 'tv'],
-            'Room': ['room', 'wall', 'floor', 'ceiling', 'building', 'bed', 'couch'],
-            'Trash Bin': ['waste', 'trash', 'bin', 'garbage', 'container', 'can', 'bottle', 'cup'],
-            'Smell / Danger': ['smoke', 'fire', 'hazard', 'danger', 'spill', 'liquid'],
-            'Floor': ['floor', 'ground', 'tile', 'carpet'],
-            'Mouse': ['mouse', 'computer mouse'],
-            'Keyboard': ['keyboard', 'typing'],
-            'Cable': ['cable', 'wire', 'cord'],
-            'Power': ['power', 'socket', 'plug', 'outlet'],
-        };
-
-        let yoloSession = null;
-        async function loadYoloModel() {
-            if (yoloSession) return yoloSession;
-            try {
-                // Priority: WASM with SIMD/Threads, then fallback
-                yoloSession = await ort.InferenceSession.create('models/yolov8n.onnx', { executionProviders: ['wasm'] });
-                console.log("YOLOv8 Model Loaded Successfully");
-                return yoloSession;
-            } catch (e) {
-                console.error("YOLO Load Error:", e);
-                return null;
-            }
-        }
-
-        async function preprocessImage(imgDataUrl) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 640;
-                        canvas.height = 640;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, 640, 640);
-
-                        const imageData = ctx.getImageData(0, 0, 640, 640).data;
-                        const tensorData = new Float32Array(3 * 640 * 640);
-                        
-                        let j = 0;
-                        for (let i = 0; i < imageData.length; i += 4) {
-                            tensorData[j] = imageData[i] / 255.0;            // R
-                            tensorData[j + 409600] = imageData[i + 1] / 255.0; // G
-                            tensorData[j + 819200] = imageData[i + 2] / 255.0; // B
-                            j++;
-                        }
-
-                        resolve(new ort.Tensor('float32', tensorData, [1, 3, 640, 640]));
-                    } catch (e) {
-                        reject(e);
-                    }
-                };
-                img.onerror = reject;
-                img.src = imgDataUrl;
-            });
-        }
-
-        async function detectWithYolo(imgDataUrl) {
-            const session = await loadYoloModel();
-            if (!session) return null;
-
-            const inputTensor = await preprocessImage(imgDataUrl);
-            const outputs = await session.run({ images: inputTensor });
-            const output = outputs.output0.data; // [1, 84, 8400]
-
-            // Decoding YOLOv8 output
-            // format: [x, y, w, h, class0_score, class1_score, ...] for 8400 boxes
-            const detections = [];
-            const numBoxes = 8400;
-            const numClasses = 80;
-
-            for (let i = 0; i < numBoxes; i++) {
-                let maxScore = 0;
-                let classId = -1;
-                for (let c = 0; c < numClasses; c++) {
-                    const score = output[(4 + c) * numBoxes + i];
-                    if (score > maxScore) {
-                        maxScore = score;
-                        classId = c;
-                    }
-                    if (c >= numClasses - 1) break;
-                }
-
-                if (maxScore > 0.3) {
-                    detections.push({
-                        class: YOLO_CLASSES[classId],
-                        score: maxScore
-                    });
-                }
-            }
-
-            // Simple Non-Maximum Suppression (group by class and take max)
-            const results = {};
-            detections.forEach(d => {
-                if (!results[d.class] || d.score > results[d.class]) {
-                    results[d.class] = d.score;
-                }
-            });
-
-            return Object.entries(results).map(([desc, score]) => ({ desc, score }));
-        }
-
-        async function checkReportWithAI(report) {
-            if (report.aiCheckDone || report._aiProcessing || !report.imageBase64Raw) return;
-            report._aiProcessing = true;
-
-            try {
-                let annotations = [];
-                let usedCloud = false;
-                let aiSource = 'Unknown';
-
-                // 1. Try Supabase Bridge Backend (Quick & Easy)
-                try {
-                    if (typeof SUPABASE_BRIDGE_URL !== 'undefined') {
-                        console.log("AI: Requesting Scan via Supabase Bridge...");
-                    const response = await fetch(SUPABASE_BRIDGE_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            image: report.imageBase64Raw,
-                            defect: report.defect,
-                            reason: report.reason
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (data && data.labels) {
-                        annotations = data.labels.map(l => ({
-                            desc: l.description.toLowerCase(),
-                            score: l.score
-                        }));
-                        usedCloud = true;
-                        aiSource = 'Supabase Bridge';
-                        console.log("AI: Used Supabase Bridge Result", annotations);
-                    }
-                    }
-                } catch (e) {
-                    console.warn("Supabase Bridge failed or not running, falling back...", e);
-                }
-
-                // 2. Fallback to Local YOLOv8 if Supabase found nothing
-                if (annotations.length === 0) {
-                    try {
-                        const yoloResults = await detectWithYolo(report.imageDataUrl || `data:image/jpeg;base64,${report.imageBase64Raw}`);
-                        if (yoloResults && yoloResults.length > 0) {
-                            annotations = yoloResults;
-                            aiSource = 'Local YOLO';
-                            console.log("AI: Used Local YOLOv8", annotations);
-                        } else {
-                            console.log("AI: Local YOLOv8 ran but found no objects.");
-                            aiSource = 'Local YOLO (No objects)';
-                        }
-                    } catch (err) {
-                        console.warn("Local YOLO failed...", err);
-                    }
-                }
-
-                const labels = annotations.map(l => l.desc);
-
-                let objectKeywords = [];
-                const specificObjects = ['Desk', 'Chair', 'Computer', 'Light', 'AC', 'Door', 'Window', 'Projector', 'Room', 'Trash Bin', 'Smell / Danger', 'Floor', 'Mouse', 'Keyboard', 'Cable', 'Power'];
-
-                for (const obj of specificObjects) {
-                    if (report.defect.includes(obj) || report.reason.includes(obj)) {
-                        objectKeywords = objectKeywords.concat(AI_KEYWORDS[obj] || []);
-                    }
-                }
-
-                const defectClass = getDefectClass(report.defect);
-                objectKeywords = [...new Set([...objectKeywords, ...(AI_KEYWORDS[defectClass] || [])])];
-
-                let matchScore = 0;
-                if (annotations.length === 0) {
-                    matchScore = 0; // Suspicious if NO objects detected
-                } else if (objectKeywords.length > 0) {
-                    const matchingAnnotations = annotations.filter(ann =>
-                        objectKeywords.some(kw => ann.desc.toLowerCase().includes(kw))
-                    );
-
-                    if (matchingAnnotations.length > 0) {
-                        matchScore = Math.round(Math.max(...matchingAnnotations.map(a => a.score)) * 100);
-                    }
-                } else {
-                    matchScore = 50; // We don't have keywords for this defect
-                }
-
-                const isSpam = matchScore < 40;
-                const aiSourceFinal = aiSource;
-
-                if (window._db && window._db.updateReportAI) {
-                    try {
-                        await window._db.updateReportAI(report.firestoreId, true, isSpam, labels, matchScore, aiSourceFinal);
-                    } catch (fbError) {
-                        console.warn("Could not save AI result. Check Firestore rules.", fbError.message);
-                    }
-                }
-
-                report.aiCheckDone = true;
-                report.aiSpam = isSpam;
-                report.aiLabels = labels;
-                report.aiScore = matchScore;
-                report.aiSource = aiSourceFinal;
-
-                if (currentPage === 'spam') renderSpamTable();
-                else if (currentPage === 'dashboard') renderTable();
-
-            } catch (error) {
-                console.error("AI Check Error:", error);
-            } finally {
-                report._aiProcessing = false;
-            }
-        }
-
-        function processPendingAIChecks() {
-            if (!reports) return;
-            // Prevent worker accounts from running AI checks (fixes Firebase Permission Error)
-            if (window._currentUser && window._currentUser.email === 'worker@lagh-univ.dz') return;
-
-            const pending = reports.filter(r => r.hasImage && r.aiCheckDone !== true);
-            if (pending.length > 0) {
-                let p = Promise.resolve();
-                pending.forEach(report => {
-                    p = p.then(() => checkReportWithAI(report));
-                });
-            }
-        }
-
         /* ── Spam Rendering ── */
         function renderSpamTable() {
             const tbody = document.getElementById('spamTable');
@@ -4875,7 +4638,7 @@
                 renderTable(); renderRoomBreakdown(); renderLeaderboard();
                 if (document.getElementById('page-stats').classList.contains('active')) buildStats();
                 if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
-                processPendingAIChecks();
+
             } catch (e) { console.error("Error in reports-updated listener:", e); hideLoadingIfReady(); }
         });
 
