@@ -3763,6 +3763,7 @@
                             userUid: reporterUid,
                             title: title,
                             message: message,
+                            readed: false,
                             createdAt: serverTimestamp()
                         });
                     } catch (e) {
@@ -3795,7 +3796,7 @@
                             name: dt.name || '',
                             email: dt.email || '',
                             role: dt.role || '',
-                            isActive: dt.isActive !== false,
+                            isBlocked: dt.isBlocked === true,
                             points: dt.points || 0
                         };
                     });
@@ -3805,11 +3806,11 @@
             async updateReportAI(fid, aiCheckDone, aiSpam, aiLabels, aiScore, aiSource) {
                 await updateDoc(doc(db, "reports", fid), { aiCheckDone, aiSpam, aiLabels, aiScore, aiSource });
             },
-            async deactivateUser(uid) {
-                await updateDoc(doc(db, "users", uid), { isActive: false });
+            async blockUser(uid) {
+                await updateDoc(doc(db, "users", uid), { isBlocked: true });
             },
-            async reactivateUser(uid) {
-                await updateDoc(doc(db, "users", uid), { isActive: true });
+            async unblockUser(uid) {
+                await updateDoc(doc(db, "users", uid), { isBlocked: false });
             }
         };
 
@@ -3918,7 +3919,7 @@
                 spam_title: "🚫 البلاغات المزيفة (Spam)", spam_total_checked: "تم فحصها بالذكاء الاصطناعي", spam_real_count: "بلاغات حقيقية", spam_fake_count: "بلاغات مزيفة",
                 spam_col_claimed: "العطل المُدّعى", spam_col_ai: "نتيجة AI", spam_col_reporter: "المُبلِّغ",
                 spam_is_spam: "🚫 مزيف", spam_is_real: "✅ حقيقي", spam_checking: "⏳ جارٍ الفحص", spam_no_image: "لا توجد صورة",
-                spam_deactivate: "⛔ تعطيل الحساب", spam_reactivate: "✅ تفعيل", spam_del: "🗑️ حذف", spam_deactivated: "تم تعطيل الحساب", spam_reactivated: "تم تفعيل الحساب",
+                spam_block: "⛔ حظر الحساب", spam_unblock: "✅ رفع الحظر", spam_del: "🗑️ حذف", spam_blocked: "تم حظر الحساب", spam_unblocked: "تم رفع الحظر",
                 spam_unknown: "مجهول", ai_labels: "العناصر المكتشفة",
             },
             fr: {
@@ -3978,7 +3979,7 @@
                 spam_title: "🚫 Signalements Faux (Spam)", spam_total_checked: "Vérifiés par IA", spam_real_count: "Signalements réels", spam_fake_count: "Signalements faux",
                 spam_col_claimed: "Défaut déclaré", spam_col_ai: "Résultat IA", spam_col_reporter: "Rapporteur",
                 spam_is_spam: "🚫 Faux", spam_is_real: "✅ Réel", spam_checking: "⏳ Vérification", spam_no_image: "Pas d'image",
-                spam_deactivate: "⛔ Désactiver", spam_reactivate: "✅ Réactiver", spam_del: "🗑️ Supprimer", spam_deactivated: "Compte désactivé", spam_reactivated: "Compte réactivé",
+                spam_block: "⛔ Bloquer", spam_unblock: "✅ Débloquer", spam_del: "🗑️ Supprimer", spam_blocked: "Compte bloqué", spam_unblocked: "Compte débloqué",
                 spam_unknown: "Inconnu", ai_labels: "Éléments détectés",
             },
             en: {
@@ -4036,7 +4037,7 @@
                 spam_title: "🚫 Fake Reports (Spam)", spam_total_checked: "AI Verified", spam_real_count: "Real Reports", spam_fake_count: "Fake Reports",
                 spam_col_claimed: "Claimed Defect", spam_col_ai: "AI Result", spam_col_reporter: "Reporter",
                 spam_is_spam: "🚫 Fake", spam_is_real: "✅ Real", spam_checking: "⏳ Checking", spam_no_image: "No image",
-                spam_deactivate: "⛔ Deactivate", spam_reactivate: "✅ Reactivate", spam_del: "🗑️ Delete", spam_deactivated: "Account deactivated", spam_reactivated: "Account reactivated",
+                spam_block: "⛔ Block Account", spam_unblock: "✅ Unblock Account", spam_del: "🗑️ Delete", spam_blocked: "Account blocked", spam_unblocked: "Account unblocked",
                 spam_unknown: "Unknown", ai_labels: "Detected items",
             }
         };
@@ -4105,18 +4106,21 @@
 
         function renderNotifList() {
             const list = document.getElementById('notifList'); if (!list) return;
-            const unreadReports = reports.filter(r => !r.isReadByAdmin);
-            if (!unreadReports.length) { list.innerHTML = `<div class="notif-empty">🔔 ${t('toast_no_notif')}</div>`; return; }
-            list.innerHTML = unreadReports.map(r => `
-    <div class="notif-item unread" onclick="openReportModal('${r.firestoreId}')">
+            const recentReports = reports.slice(0, 30);
+            if (!recentReports.length) { list.innerHTML = `<div class="notif-empty">🔔 ${t('toast_no_notif')}</div>`; return; }
+            list.innerHTML = recentReports.map(r => {
+                const isUnread = !r.isReadByAdmin;
+                return `
+    <div class="notif-item ${isUnread ? 'unread' : 'read'}" onclick="openReportModal('${r.firestoreId}')">
       <div class="notif-icon">🔔</div>
       <div class="notif-text">
         <div class="notif-title">بلاغ جديد في ${r.room}</div>
         <div class="notif-sub">${t(r.defect) || r.defect}</div>
         <div class="notif-time">${r.date}</div>
       </div>
-      <div class="notif-unread-dot"></div>
-    </div>`).join('');
+      ${isUnread ? '<div class="notif-unread-dot"></div>' : ''}
+    </div>`;
+            }).join('');
         }
 
         function toggleNotifPanel() {
@@ -4657,20 +4661,22 @@
             tbody.innerHTML = spamReports.map((r, idx) => {
                 const localizedDefect = t(r.defect) + (r.reason && r.reason !== '—' ? ` - ${t(r.reason)}` : '');
 
-                let uName = t('spam_unknown'), uEmail = '—', isActive = true;
+                let uName = t('spam_unknown'), uEmail = '—', isBlocked = false;
                 if (window._usersMap && r.reporterUid && window._usersMap[r.reporterUid]) {
                     uName = window._usersMap[r.reporterUid].name || uName;
                     uEmail = window._usersMap[r.reporterUid].email || uEmail;
-                    isActive = window._usersMap[r.reporterUid].isActive;
+                    isBlocked = window._usersMap[r.reporterUid].isBlocked === true;
                 }
+
+                let displayNameHtml = isBlocked ? `<span title="${t('spam_blocked')}" style="font-size:12px">🚫</span> ${uName}` : uName;
 
                 let ab = `<button class="btn-sm btn-ghost" onclick="openReportModal('${r.firestoreId}')">${t('btn_view')}</button>`;
                 ab += `<button class="btn-sm btn-danger-sm" onclick="openDeleteReportModal('${r.firestoreId}')">${t('spam_del')}</button>`;
                 if (r.reporterUid) {
-                    if (isActive) {
-                        ab += `<button class="btn-sm btn-warn" onclick="deactivateUser('${r.reporterUid}')">${t('spam_deactivate')}</button>`;
+                    if (!isBlocked) {
+                        ab += `<button class="btn-sm btn-warn" onclick="blockUser('${r.reporterUid}')">${t('spam_block')}</button>`;
                     } else {
-                        ab += `<button class="btn-sm btn-success" onclick="reactivateUser('${r.reporterUid}')">${t('spam_reactivate')}</button>`;
+                        ab += `<button class="btn-sm btn-success" onclick="unblockUser('${r.reporterUid}')">${t('spam_unblock')}</button>`;
                     }
                 }
 
@@ -4688,31 +4694,31 @@
           <div style="display:flex;align-items:center;gap:6px;"><span class="spam-badge is-spam">${t('spam_is_spam')}</span>${scoreBadge}</div>
           ${aiLabelsStr}
       </div></td>
-      <td><div class="spam-user-info"><span class="spam-user-name">${uName}</span><span class="spam-user-email">${uEmail}</span></div></td>
+      <td><div class="spam-user-info"><span class="spam-user-name">${displayNameHtml}</span><span class="spam-user-email">${uEmail}</span></div></td>
       <td style="font-size:12px;color:var(--g500)">${r.date}</td>
       <td><div class="action-btns">${ab}</div></td>
     </tr>`;
             }).join('');
         }
 
-        async function deactivateUser(uid) {
-            if (!window._db || !window._db.deactivateUser) return;
+        async function blockUser(uid) {
+            if (!window._db || !window._db.blockUser) return;
             try {
-                await window._db.deactivateUser(uid);
-                if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isActive = false;
-                showToast(t('spam_deactivated'), false, 'success');
+                await window._db.blockUser(uid);
+                if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isBlocked = true;
+                showToast(t('spam_blocked'), false, 'success');
                 renderSpamTable();
             } catch (e) {
                 showToast(t('toast_error'), true);
             }
         }
 
-        async function reactivateUser(uid) {
-            if (!window._db || !window._db.reactivateUser) return;
+        async function unblockUser(uid) {
+            if (!window._db || !window._db.unblockUser) return;
             try {
-                await window._db.reactivateUser(uid);
-                if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isActive = true;
-                showToast(t('spam_reactivated'), false, 'success');
+                await window._db.unblockUser(uid);
+                if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isBlocked = false;
+                showToast(t('spam_unblocked'), false, 'success');
                 renderSpamTable();
             } catch (e) {
                 showToast(t('toast_error'), true);
