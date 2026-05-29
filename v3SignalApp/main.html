@@ -3602,7 +3602,7 @@
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
         import {
             getFirestore, collection, addDoc, updateDoc, deleteDoc,
-            doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, limit
+            doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, limit, getDoc, increment
         }
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -3679,8 +3679,8 @@
                         status: data.status || 'pending',
                         date: dateStr, ts,
                         note: data.note || '—',
-                        reporter: data.reporter || data.userUid || data.studentUid || 'مجهول',
-                        reporterUid: data.userUid || data.studentUid || null,
+                        reporter: `${data.reporter || data.reporter_name || 'مجهول'} (${data.reporter_email || data.userId || data.userUid || data.studentUid || 'No Email'})`,
+                        reporterUid: data.userId || data.userUid || data.studentUid || null,
                         severity: data.severity || 'عادي',
                         imageDataUrl,
                         imageBase64Raw: raw64,
@@ -3694,13 +3694,8 @@
                     };
                 });
 
-                if (!firstLoad) {
-                    const oldIds = new Set((window._reports || []).map(r => r.firestoreId));
-                    newReports.forEach(r => {
-                        if (!oldIds.has(r.firestoreId)) {
-                            window._addNotification({ title: `بلاغ جديد في ${r.room}`, sub: r.defect, time: r.date, icon: '🔔', firestoreId: r.firestoreId });
-                        }
-                    });
+                if (firstLoad) {
+                    newReports.forEach(r => window._notifiedReportIds.add(r.firestoreId));
                 }
                 firstLoad = false;
                 window._reports = newReports;
@@ -3727,9 +3722,53 @@
             async addHall(data) { return (await addDoc(collection(db, "halls"), { ...data, createdAt: serverTimestamp() })).id; },
             async updateHall(fid, data) { await updateDoc(doc(db, "halls", fid), { ...data, updatedAt: serverTimestamp() }); },
             async deleteHall(fid) { await deleteDoc(doc(db, "halls", fid)); },
-            async updateReportStatus(fid, status, admin) {
+            async updateReportStatus(fid, status, admin, reporterUid) {
                 await updateDoc(doc(db, "reports", fid), { status });
-                try { await addDoc(collection(db, "activityLog"), { reportId: fid, action: status === 'inprogress' ? 'started' : status === 'complete' ? 'completed' : 'reverted', newStatus: status, performedBy: admin || 'admin', performedAt: serverTimestamp(), type: 'status_change' }); } catch (e) { }
+                try {
+                    await addDoc(collection(db, "activityLog"), {
+                        reportId: fid,
+                        action: status === 'inprogress' ? 'started' : status === 'complete' ? 'completed' : 'reverted',
+                        newStatus: status,
+                        performedBy: admin || 'admin',
+                        performedAt: serverTimestamp(),
+                        type: 'status_change'
+                    });
+                } catch (e) { }
+
+                if (reporterUid && status === 'inprogress') {
+                    try {
+                        // 1. Increment points
+                        await updateDoc(doc(db, "users", reporterUid), {
+                            points: increment(10)
+                        });
+
+                        // 2. Fetch language preference
+                        const userSnap = await getDoc(doc(db, "users", reporterUid));
+                        const userData = userSnap.exists() ? userSnap.data() : {};
+                        const userLang = userData.language || 'en';
+
+                        // 3. Form localized strings
+                        let title = "Report Started 🔧";
+                        let message = "Your report is under progress! You received 10 points.";
+                        if (userLang === 'ar') {
+                            title = "بدء صيانة البلاغ 🔧";
+                            message = "بلاغك قيد الصيانة الآن! لقد حصلت على 10 نقاط.";
+                        } else if (userLang === 'fr') {
+                            title = "Signalement Commencé 🔧";
+                            message = "Votre signalement est en cours ! Vous avez reçu 10 points.";
+                        }
+
+                        // 4. Write notification to Firestore
+                        await addDoc(collection(db, "notifications"), {
+                            userUid: reporterUid,
+                            title: title,
+                            message: message,
+                            createdAt: serverTimestamp()
+                        });
+                    } catch (e) {
+                        console.error("Error updating points/notifications:", e);
+                    }
+                }
             },
             async deleteReport(fid, rd, admin) {
                 await deleteDoc(doc(db, "reports", fid));
@@ -3750,7 +3789,16 @@
                 try {
                     const snap = await getDocs(collection(db, "users"));
                     const map = {};
-                    snap.docs.forEach(d => { const dt = d.data(); map[d.id] = { name: dt.name || '', email: dt.email || '', role: dt.role || '', isActive: dt.isActive !== false }; });
+                    snap.docs.forEach(d => {
+                        const dt = d.data();
+                        map[d.id] = {
+                            name: dt.name || '',
+                            email: dt.email || '',
+                            role: dt.role || '',
+                            isActive: dt.isActive !== false,
+                            points: dt.points || 0
+                        };
+                    });
                     return map;
                 } catch (e) { console.error(e); return {}; }
             },
@@ -4018,36 +4066,79 @@
 
         /* ═══ NOTIFICATIONS ═══ */
         let notifications = [], notifOpen = false;
-        window._addNotification = function (n) {
-            notifications.unshift({ ...n, id: Date.now(), read: false });
+        window._notifiedReportIds = new Set();
+        
+        function updateNotificationsFromReports() {
+            const unreadReports = reports.filter(r => !r.isReadByAdmin);
+            
+            // Trigger desktop notification & audio for newly added reports
+            unreadReports.forEach(r => {
+                if (!window._notifiedReportIds.has(r.firestoreId)) {
+                    window._notifiedReportIds.add(r.firestoreId);
+                    
+                    // Desktop Notification
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                        try {
+                            new Notification(`بلاغ جديد في ${r.room}`, {
+                                body: `${t(r.defect)}\n${r.note || ''}`,
+                            });
+                        } catch (e) { console.error("Desktop Notification error:", e); }
+                    }
+                    
+                    // Audio Notification
+                    try {
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
+                        audio.play().catch(e => console.log("Audio play blocked"));
+                    } catch (e) {}
+                }
+            });
+
             updateNotifUI();
-        };
+        }
+
         function updateNotifUI() {
-            const unread = notifications.filter(n => !n.read).length;
+            const unreadReports = reports.filter(r => !r.isReadByAdmin);
             const dot = document.getElementById('notifDot');
-            if (dot) dot.classList.toggle('hidden', unread === 0);
+            if (dot) dot.classList.toggle('hidden', unreadReports.length === 0);
             renderNotifList();
         }
+
         function renderNotifList() {
             const list = document.getElementById('notifList'); if (!list) return;
-            if (!notifications.length) { list.innerHTML = `<div class="notif-empty">🔔 ${t('toast_no_notif')}</div>`; return; }
-            list.innerHTML = notifications.map(n => `
-    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead(${n.id})">
-      <div class="notif-icon">${n.icon || '🔔'}</div>
+            const unreadReports = reports.filter(r => !r.isReadByAdmin);
+            if (!unreadReports.length) { list.innerHTML = `<div class="notif-empty">🔔 ${t('toast_no_notif')}</div>`; return; }
+            list.innerHTML = unreadReports.map(r => `
+    <div class="notif-item unread" onclick="openReportModal('${r.firestoreId}')">
+      <div class="notif-icon">🔔</div>
       <div class="notif-text">
-        <div class="notif-title">${n.title}</div>
-        <div class="notif-sub">${n.sub || ''}</div>
-        <div class="notif-time">${n.time || ''}</div>
+        <div class="notif-title">بلاغ جديد في ${r.room}</div>
+        <div class="notif-sub">${t(r.defect) || r.defect}</div>
+        <div class="notif-time">${r.date}</div>
       </div>
-      ${n.read ? '' : '<div class="notif-unread-dot"></div>'}
+      <div class="notif-unread-dot"></div>
     </div>`).join('');
         }
+
         function toggleNotifPanel() {
             notifOpen = !notifOpen;
             document.getElementById('notifPanel').classList.toggle('open', notifOpen);
         }
-        function markRead(id) { const n = notifications.find(x => x.id === id); if (n) { n.read = true; updateNotifUI(); } }
-        function markAllRead() { notifications.forEach(n => n.read = true); updateNotifUI(); }
+
+        async function markRead(id) {
+            try {
+                await updateDoc(doc(db, "reports", id), { isReadByAdmin: true });
+            } catch (e) { console.error("Error marking report read:", e); }
+        }
+
+        async function markAllRead() {
+            const unreadReports = reports.filter(r => !r.isReadByAdmin);
+            for (const r of unreadReports) {
+                try {
+                    await updateDoc(doc(db, "reports", r.firestoreId), { isReadByAdmin: true });
+                } catch (e) { console.error("Error marking all read:", e); }
+            }
+        }
+
         document.addEventListener('click', e => {
             const panel = document.getElementById('notifPanel');
             const btn = document.getElementById('notifBtn');
@@ -4243,18 +4334,25 @@
 
         function renderLeaderboard() {
             const c = document.getElementById('leaderboardList'); if (!c) return;
-            if (!reports.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
-            const pts = {};
-            reports.forEach(r => { if (!pts[r.reporter]) pts[r.reporter] = { count: 0, points: 0 }; pts[r.reporter].count++; pts[r.reporter].points += (r.status === 'complete' ? 15 : 5); });
-            const sorted = Object.entries(pts).sort((a, b) => b[1].points - a[1].points).slice(0, 4);
+            if (!window._usersMap) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
+            
+            const sortedUsers = Object.entries(window._usersMap)
+                .map(([uid, u]) => ({ name: u.name || u.email || 'مجهول', email: u.email || '—', points: u.points || 0 }))
+                .filter(u => u.points > 0)
+                .sort((a, b) => b.points - a.points)
+                .slice(0, 4);
+
+            if (!sortedUsers.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
             const icons = ['🥇', '🥈', '🥉', '4️⃣'];
-            c.innerHTML = sorted.map(([name, data], i) => `<div class="leader-item"><span style="font-size:19px">${icons[i] || '●'}</span><div><div class="leader-name">${name}</div><div class="leader-sub">${data.count} ${t('reports_acc')}</div></div><span class="leader-pts">${data.points} ${t('pts')}</span></div>`).join('');
+            c.innerHTML = sortedUsers.map((u, i) => `<div class="leader-item"><span style="font-size:19px">${icons[i] || '●'}</span><div><div class="leader-name">${u.name}</div><div class="leader-sub">${u.email}</div></div><span class="leader-pts">${u.points} ${t('pts')}</span></div>`).join('');
         }
 
         async function changeStatus(firestoreId, newStatus) {
-            const prev = reports.find(r => r.firestoreId === firestoreId)?.status;
+            const report = reports.find(r => r.firestoreId === firestoreId);
+            const prev = report?.status;
             try {
-                await window._db.updateReportStatus(firestoreId, newStatus, window._adminEmail);
+                const awardPoints = (newStatus === 'inprogress' && prev === 'pending');
+                await window._db.updateReportStatus(firestoreId, newStatus, window._adminEmail, awardPoints ? report?.reporterUid : null);
                 if (newStatus === 'inprogress' && prev === 'pending') showToast(t('toast_started'), '', 'success');
                 else if (newStatus === 'complete') showToast(t('toast_done'), '', 'success');
                 else showToast(t('toast_reverted'));
@@ -4290,6 +4388,9 @@
         /* ── Open report modal — image from base64 ── */
         function openReportModal(firestoreId) {
             const r = reports.find(x => x.firestoreId === firestoreId); if (!r) return;
+            if (!r.isReadByAdmin) {
+                markRead(firestoreId);
+            }
             const cls = getDefectClass(r.defect), emoji = getDefectEmoji(r.defect);
 
             /* Build image section using base64 data URL directly */
@@ -4453,7 +4554,11 @@
             const actionLabel = { started: '🔄 ' + t('status_inprogress'), completed: '✅ ' + t('status_complete'), reverted: '↩ ' + t('toast_reverted'), deleted: '🗑️ ' + t('toast_deleted_report') };
             c.innerHTML = logs.map(log => {
                 const isDel = log.type === 'report_deleted';
-                return `<div class="log-item"><div class="log-icon ${isDel ? 'deleted' : 'status'}">${isDel ? '🗑️' : '🔄'}</div><div class="log-meta"><div class="log-title">${actionLabel[log.action] || log.action} — ${log.hallName || log.reportId || ''}</div><div class="log-sub">${t('log_by')}: ${log.performedBy || '—'} · ${log.defect || ''}</div><div class="log-time">📅 ${log.dateStr}</div></div></div>`;
+                let performer = log.performedBy || '—';
+                if (window._usersMap && window._usersMap[performer]) {
+                    performer = window._usersMap[performer].email || window._usersMap[performer].name || performer;
+                }
+                return `<div class="log-item"><div class="log-icon ${isDel ? 'deleted' : 'status'}">${isDel ? '🗑️' : '🔄'}</div><div class="log-meta"><div class="log-title">${actionLabel[log.action] || log.action} — ${log.hallName || log.reportId || ''}</div><div class="log-sub">${t('log_by')}: ${performer} · ${log.defect || ''}</div><div class="log-time">📅 ${log.dateStr}</div></div></div>`;
             }).join('');
         }
 
@@ -4510,13 +4615,18 @@
             html += `</tbody>`; document.getElementById('heatTable').innerHTML = html;
         }
         function buildLeaderboardFull() {
-            const pts = {};
-            reports.forEach(r => { if (!pts[r.reporter]) pts[r.reporter] = { count: 0, points: 0 }; pts[r.reporter].count++; pts[r.reporter].points += (r.status === 'complete' ? 15 : 5); });
-            const sorted = Object.entries(pts).sort((a, b) => b[1].points - a[1].points).slice(0, 6);
-            const rankCls = ['gold', '', '', '', '', ''], rbCls = ['rb-1', 'rb-2', 'rb-3', 'rb-n', 'rb-n', 'rb-n'], rankIcons = ['🥇', '🥈', '🥉', '4', '5', '6'];
             const c = document.getElementById('leaderboardFull'); if (!c) return;
-            if (!sorted.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
-            c.innerHTML = sorted.map(([name, data], i) => `<div class="lb-item ${rankCls[i]}"><div class="rank-badge ${rbCls[i]}">${rankIcons[i]}</div><div class="lb-info"><div class="lb-name">${name}</div><div class="lb-sub">${data.count} ${t('reports_acc')}</div></div><div><div class="lb-pts ${i === 0 ? 'gold-c' : ''}">${data.points} <span style="font-size:11px;font-weight:600">${t('pts')}</span></div></div></div>`).join('');
+            if (!window._usersMap) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
+            
+            const sortedUsers = Object.entries(window._usersMap)
+                .map(([uid, u]) => ({ name: u.name || u.email || 'مجهول', email: u.email || '—', points: u.points || 0 }))
+                .filter(u => u.points > 0)
+                .sort((a, b) => b.points - a.points)
+                .slice(0, 6);
+
+            if (!sortedUsers.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
+            const rankCls = ['gold', '', '', '', '', ''], rbCls = ['rb-1', 'rb-2', 'rb-3', 'rb-n', 'rb-n', 'rb-n'], rankIcons = ['🥇', '🥈', '🥉', '4', '5', '6'];
+            c.innerHTML = sortedUsers.map((u, i) => `<div class="lb-item ${rankCls[i]}"><div class="rank-badge ${rbCls[i]}">${rankIcons[i]}</div><div class="lb-info"><div class="lb-name">${u.name}</div><div class="lb-sub">${u.email}</div></div><div><div class="lb-pts ${i === 0 ? 'gold-c' : ''}">${u.points} <span style="font-size:11px;font-weight:600">${t('pts')}</span></div></div></div>`).join('');
         }
         function setPeriod(el, p) { document.querySelectorAll('.pb').forEach(b => b.classList.remove('active')); el.classList.add('active'); statsPeriod = p; buildStats(); }
 
@@ -4635,10 +4745,20 @@
             try {
                 reports = window._reports || []; reportsDataReady = true;
                 hideLoadingIfReady();
-                renderTable(); renderRoomBreakdown(); renderLeaderboard();
-                if (document.getElementById('page-stats').classList.contains('active')) buildStats();
-                if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
-
+                // Fetch latest user points before rendering the leaderboard
+                window._db.loadUsers().then(u => {
+                    window._usersMap = u;
+                    updateNotificationsFromReports();
+                    renderTable(); renderRoomBreakdown(); renderLeaderboard();
+                    if (document.getElementById('page-stats').classList.contains('active')) buildStats();
+                    if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
+                }).catch(e => {
+                    console.error("Error loading users:", e);
+                    updateNotificationsFromReports();
+                    renderTable(); renderRoomBreakdown(); renderLeaderboard();
+                    if (document.getElementById('page-stats').classList.contains('active')) buildStats();
+                    if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
+                });
             } catch (e) { console.error("Error in reports-updated listener:", e); hideLoadingIfReady(); }
         });
 
@@ -4650,6 +4770,11 @@
             } catch (e) { console.error("Error in halls-loaded listener:", e); hideLoadingIfReady(); }
         });
         setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 8000);
+
+        // Request desktop notifications permission
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
 
         applyT();
     </script>
