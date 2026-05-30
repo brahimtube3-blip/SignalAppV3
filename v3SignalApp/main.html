@@ -119,9 +119,22 @@
             inset: 0;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 50%, var(--primary-l) 100%);
             z-index: 1000;
+            overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding: 40px 16px;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media(min-height: 600px) {
+            .auth-screen {
+                justify-content: center;
+                padding: 20px;
+            }
         }
 
         .auth-screen.hidden {
@@ -136,6 +149,7 @@
             overflow: hidden;
             box-shadow: 0 30px 80px rgba(0, 0, 0, .3);
             animation: authIn .5s ease;
+            flex-shrink: 0;
         }
 
         @keyframes authIn {
@@ -530,9 +544,10 @@
             backdrop-filter: blur(10px);
             border-bottom: 2px solid var(--primary-border);
             padding: 0 24px;
-            height: 64px;
+            min-height: 64px;
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 12px;
             position: sticky;
             top: 0;
@@ -551,6 +566,7 @@
         .topbar-right {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 9px;
         }
 
@@ -2961,49 +2977,104 @@
         }
 
         @media(max-width:1100px) {
-            .two-col {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-row,
-            .kpi-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .grid-21 {
-                grid-template-columns: 1fr;
-            }
-
-            .grid-3 {
-                grid-template-columns: 1fr 1fr;
-            }
+            .two-col { grid-template-columns: 1fr; }
+            .stats-row, .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .grid-21 { grid-template-columns: 1fr; }
+            .grid-3 { grid-template-columns: 1fr 1fr; }
         }
 
         @media(max-width:760px) {
             .sidebar {
-                display: none;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
             }
-
+            [dir=ltr] .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
             .main {
                 margin-right: 0 !important;
                 margin-left: 0 !important;
             }
+            .stats-row, .summary-bar { grid-template-columns: 1fr; }
+            .content { padding: 14px; }
+            .two-col { grid-template-columns: 1fr; }
+            .kpi-row, .grid-3, .grid-21 { grid-template-columns: 1fr; }
+            
+            /* Responsive topbar */
+            .topbar { padding: 10px 14px; gap: 8px; }
+            .topbar h1 { font-size: 15px; }
+            .search-box input { width: 100px; }
+            .topbar-right { justify-content: flex-end; width: 100%; }
+        }
 
-            .stats-row,
-            .summary-bar {
-                grid-template-columns: 1fr 1fr;
+        /* Responsive Table styling */
+        table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        /* Sidebar backdrop */
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-backdrop.open {
+            display: block;
+        }
+
+        /* Hamburger button */
+        .hamburger-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--primary);
+            margin-right: 10px;
+        }
+        [dir=ltr] .hamburger-btn {
+            margin-right: 0;
+            margin-left: 10px;
+        }
+        @media(max-width:760px) {
+            .hamburger-btn { display: inline-block; }
+        }
+
+        @media(max-width:480px) {
+            .auth-card {
+                border-radius: 16px;
             }
-
-            .content {
-                padding: 14px;
+            .auth-header {
+                padding: 24px 16px;
             }
-
-            .two-col {
-                grid-template-columns: 1fr;
+            .auth-body {
+                padding: 20px;
             }
-
-            .kpi-row {
-                grid-template-columns: repeat(2, 1fr);
+            .auth-uni-logo {
+                width: 54px;
+                height: 54px;
+            }
+            .auth-app-logo {
+                width: 46px;
+                height: 46px;
+                font-size: 22px;
+            }
+            .auth-divider-line {
+                height: 32px;
+            }
+            .auth-header h1 {
+                font-size: 19px;
+            }
+            .auth-header p {
+                font-size: 12px;
             }
         }
 
@@ -3177,6 +3248,9 @@
         <div class="loading-txt" id="loadingTxt">جارٍ تحميل البيانات...</div>
     </div>
 
+    <!-- ══ SIDEBAR BACKDROP ══ -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
     <!-- ══ SIDEBAR ══ -->
     <aside class="sidebar">
         <div class="sb-logo">
@@ -3231,6 +3305,7 @@
     <!-- ══ MAIN ══ -->
     <div class="main">
         <div class="topbar">
+            <button class="hamburger-btn" onclick="toggleMobileSidebar()">☰</button>
             <h1 id="pageTitle">📋 إدارة البلاغات</h1>
             <div class="topbar-right">
                 <div class="search-box" id="searchBoxWrap">
@@ -5406,6 +5481,19 @@
         if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+
+        /* ═══ MOBILE RESPONSIVENESS ═══ */
+        function toggleMobileSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarBackdrop').classList.toggle('open');
+        }
+        function closeMobileSidebar() {
+            document.querySelector('.sidebar').classList.remove('open');
+            document.getElementById('sidebarBackdrop').classList.remove('open');
+        }
+        document.querySelectorAll('.nav-item').forEach(el => {
+            el.addEventListener('click', closeMobileSidebar);
+        });
 
         applyT();
     </script>
