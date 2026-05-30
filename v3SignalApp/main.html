@@ -3593,6 +3593,34 @@
         </div>
     </div>
 
+    <!-- Late Start Modal -->
+    <div class="modal-overlay" id="lateStartModal" onclick="closeModalBg(event,'lateStartModal')">
+        <div class="modal" style="width:400px">
+            <div class="modal-header">
+                <h3 id="lateStartTitle" data-k="late_start_title" style="color:var(--red);">⚠️ تأخر في بدء البلاغ</h3>
+                <span class="modal-close" onclick="closeModal('lateStartModal')">✕</span>
+            </div>
+            <div class="modal-body" style="padding:15px 25px;">
+                <p id="lateStartDesc" data-k="late_start_desc" style="font-size: 13.5px; color: var(--g600); margin-bottom: 16px;">
+                    لقد تجاوز هذا البلاغ 3 أيام منذ إنشائه. يرجى تقديم سبب التأخير وإرفاق مستند رسمي.
+                </p>
+                <div class="form-group">
+                    <label id="lblLateReason" data-k="lbl_late_reason">سبب التأخير</label>
+                    <textarea id="lateReason" rows="3" class="form-control" style="resize:none;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label id="lblLateFile" data-k="lbl_late_file">مستند رسمي</label>
+                    <input type="file" id="lateFile" class="form-control" accept="image/*,.pdf" />
+                </div>
+                <input type="hidden" id="lateStartReportId" />
+            </div>
+            <div class="modal-footer">
+                <button class="btn-lg outline" onclick="closeModal('lateStartModal')" data-k="btn_cancel" id="btnCancelLate">إلغاء</button>
+                <button class="btn-lg primary" onclick="submitLateStart()" data-k="btn_submit_late" id="btnSubmitLate">تأكيد وبدء</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <!-- ══ FIREBASE ══ -->
@@ -3678,6 +3706,7 @@
                         reason: data.reason || '—',
                         status: data.status || 'pending',
                         date: dateStr, ts,
+                        startedAt: data.startedAt?.toDate ? data.startedAt.toDate().getTime() : null,
                         note: data.note || '—',
                         reporter: `${data.reporter || data.reporter_name || 'مجهول'} (${data.reporter_email || data.userId || data.userUid || data.studentUid || 'No Email'})`,
                         reporterUid: data.userId || data.userUid || data.studentUid || null,
@@ -3723,7 +3752,11 @@
             async updateHall(fid, data) { await updateDoc(doc(db, "halls", fid), { ...data, updatedAt: serverTimestamp() }); },
             async deleteHall(fid) { await deleteDoc(doc(db, "halls", fid)); },
             async updateReportStatus(fid, status, admin, reporterUid) {
-                await updateDoc(doc(db, "reports", fid), { status });
+                const updateData = { status };
+                if (status === 'inprogress') {
+                    updateData.startedAt = serverTimestamp();
+                }
+                await updateDoc(doc(db, "reports", fid), updateData);
                 try {
                     await addDoc(collection(db, "activityLog"), {
                         reportId: fid,
@@ -3820,6 +3853,7 @@
                 document.getElementById('authScreen').classList.add('hidden');
                 
                 const isWorker = user.email === 'worker@lagh-univ.dz';
+                window._adminRole = isWorker ? 'worker' : 'admin';
                 document.getElementById('sb-user').textContent = isWorker ? 'عامل صيانة' : 'مسؤول الصيانة';
                 document.getElementById('sb-role').textContent = isWorker ? 'عامل' : 'مشرف عام';
                 const av = document.getElementById('sb-avatar'); if (av) av.textContent = isWorker ? 'ع' : 'م';
@@ -3921,6 +3955,9 @@
                 spam_is_spam: "🚫 مزيف", spam_is_real: "✅ حقيقي", spam_checking: "⏳ جارٍ الفحص", spam_no_image: "لا توجد صورة",
                 spam_block: "⛔ حظر الحساب", spam_unblock: "✅ رفع الحظر", spam_del: "🗑️ حذف", spam_blocked: "تم حظر الحساب", spam_unblocked: "تم رفع الحظر",
                 spam_unknown: "مجهول", ai_labels: "العناصر المكتشفة",
+                late_start_title: '⚠️ تأخر في بدء البلاغ', late_start_desc: 'لقد تجاوز هذا البلاغ 3 أيام منذ إنشائه. يرجى تقديم سبب التأخير وإرفاق مستند رسمي.',
+                lbl_late_reason: 'سبب التأخير', lbl_late_file: 'مستند رسمي (اختياري / إلزامي)', btn_submit_late: 'تأكيد وبدء',
+                log_late_start: 'تأخر في البدء'
             },
             fr: {
                 app_title: "Maintenance", app_sub: "Complexe Informatique", univ: "Université de Laghouat",
@@ -3981,6 +4018,9 @@
                 spam_is_spam: "🚫 Faux", spam_is_real: "✅ Réel", spam_checking: "⏳ Vérification", spam_no_image: "Pas d'image",
                 spam_block: "⛔ Bloquer", spam_unblock: "✅ Débloquer", spam_del: "🗑️ Supprimer", spam_blocked: "Compte bloqué", spam_unblocked: "Compte débloqué",
                 spam_unknown: "Inconnu", ai_labels: "Éléments détectés",
+                late_start_title: '⚠️ Retard de Démarrage', late_start_desc: 'Ce signalement a dépassé 3 jours depuis sa création. Veuillez fournir la raison du retard et joindre un document officiel.',
+                lbl_late_reason: 'Raison du retard', lbl_late_file: 'Document officiel (optionnel / obligatoire)', btn_submit_late: 'Confirmer et Démarrer',
+                log_late_start: 'Démarrage Tardif'
             },
             en: {
                 app_title: "Maintenance Panel", app_sub: "CS Complex", univ: "University of Laghouat",
@@ -4297,7 +4337,15 @@
                 let ab = `<button class="btn-sm btn-ghost" onclick="openReportModal('${r.firestoreId}')">${t('btn_view')}</button>`;
                 if (r.status === 'pending') ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
                 if (r.status === 'inprogress') {
-                    ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','pending')">${t('btn_back_pending')}</button>`;
+                    const isWorker = window._adminRole === 'worker';
+                    const timeSinceStart = r.startedAt ? (Date.now() - r.startedAt) : 0;
+                    const disableBack = isWorker && timeSinceStart > 15 * 60 * 1000;
+                    
+                    if (disableBack) {
+                        ab += `<button class="btn-sm btn-warn" disabled style="opacity:0.5;cursor:not-allowed" title="انتهى وقت الرجوع (15 دقيقة)">${t('btn_back_pending')}</button>`;
+                    } else {
+                        ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','pending')">${t('btn_back_pending')}</button>`;
+                    }
                     ab += `<button class="btn-sm btn-success" onclick="changeStatus('${r.firestoreId}','complete')">${t('btn_finish')}</button>`;
                 }
                 if (r.status === 'complete') ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_back_inprog')}</button>`;
@@ -4354,6 +4402,15 @@
         async function changeStatus(firestoreId, newStatus) {
             const report = reports.find(r => r.firestoreId === firestoreId);
             const prev = report?.status;
+
+            if (newStatus === 'inprogress' && prev === 'pending') {
+                const isLate = report.ts && (Date.now() - report.ts > 3 * 24 * 60 * 60 * 1000);
+                if (isLate) {
+                    openLateStartModal(firestoreId);
+                    return;
+                }
+            }
+
             try {
                 const awardPoints = (newStatus === 'inprogress' && prev === 'pending');
                 await window._db.updateReportStatus(firestoreId, newStatus, window._adminEmail, awardPoints ? report?.reporterUid : null);
@@ -4361,6 +4418,82 @@
                 else if (newStatus === 'complete') showToast(t('toast_done'), '', 'success');
                 else showToast(t('toast_reverted'));
             } catch (e) { showToast(t('toast_error'), true); }
+        }
+
+        function openLateStartModal(firestoreId) {
+            document.getElementById('lateStartReportId').value = firestoreId;
+            document.getElementById('lateReason').value = '';
+            document.getElementById('lateFile').value = '';
+            
+            document.getElementById('lateStartTitle').textContent = t('late_start_title');
+            document.getElementById('lateStartDesc').textContent = t('late_start_desc');
+            document.getElementById('lblLateReason').textContent = t('lbl_late_reason');
+            document.getElementById('lblLateFile').textContent = t('lbl_late_file');
+            document.getElementById('btnSubmitLate').textContent = t('btn_submit_late');
+            document.getElementById('btnCancelLate').textContent = t('btn_cancel');
+
+            openModal('lateStartModal');
+        }
+
+        async function submitLateStart() {
+            const firestoreId = document.getElementById('lateStartReportId').value;
+            const reason = document.getElementById('lateReason').value.trim();
+            const fileInput = document.getElementById('lateFile');
+            const btn = document.getElementById('btnSubmitLate');
+
+            if (!reason) {
+                showToast(t('err_required') || 'Missing reason', true);
+                return;
+            }
+            if (fileInput.files.length === 0) {
+                showToast(t('err_required') || 'Missing file', true);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = t('loading');
+
+            try {
+                const file = fileInput.files[0];
+                const fileBase64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                });
+
+                const report = reports.find(r => r.firestoreId === firestoreId);
+                const awardPoints = true;
+
+                await window._db.updateReportStatus(firestoreId, 'inprogress', window._adminEmail, awardPoints ? report?.reporterUid : null);
+
+                let workerName = window._adminEmail;
+                if (window._usersMap) {
+                    const u = Object.values(window._usersMap).find(x => x.email === window._adminEmail);
+                    if (u) workerName = u.name || window._adminEmail;
+                }
+
+                await addDoc(collection(db, "activityLog"), {
+                    reportId: firestoreId,
+                    action: 'late_start',
+                    reason: reason,
+                    fileBase64: fileBase64,
+                    workerEmail: window._adminEmail,
+                    workerName: workerName,
+                    hallName: report?.room || '—',
+                    defect: report?.defect || '—',
+                    performedAt: serverTimestamp(),
+                    type: 'late_start'
+                });
+
+                showToast(t('toast_started'), '', 'success');
+                closeModal('lateStartModal');
+            } catch (e) {
+                showToast(t('toast_error'), true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = t('btn_submit_late');
+            }
         }
 
         function openDeleteReportModal(firestoreId) {
@@ -4555,14 +4688,20 @@
             c.innerHTML = `<div class="empty-state"><div class="ei">⏳</div><p>جارٍ التحميل...</p></div>`;
             const logs = await window._db.loadActivityLog();
             if (!logs.length) { c.innerHTML = `<div class="empty-state"><div class="ei">🗂️</div><p>${t('empty')}</p></div>`; return; }
-            const actionLabel = { started: '🔄 ' + t('status_inprogress'), completed: '✅ ' + t('status_complete'), reverted: '↩ ' + t('toast_reverted'), deleted: '🗑️ ' + t('toast_deleted_report') };
+            const actionLabel = { started: '🔄 ' + t('status_inprogress'), completed: '✅ ' + t('status_complete'), reverted: '↩ ' + t('toast_reverted'), deleted: '🗑️ ' + t('toast_deleted_report'), late_start: '⚠️ ' + t('log_late_start') };
             c.innerHTML = logs.map(log => {
                 const isDel = log.type === 'report_deleted';
-                let performer = log.performedBy || '—';
+                const isLateStart = log.type === 'late_start';
+                let performer = log.performedBy || log.workerName || log.workerEmail || '—';
                 if (window._usersMap && window._usersMap[performer]) {
                     performer = window._usersMap[performer].email || window._usersMap[performer].name || performer;
                 }
-                return `<div class="log-item"><div class="log-icon ${isDel ? 'deleted' : 'status'}">${isDel ? '🗑️' : '🔄'}</div><div class="log-meta"><div class="log-title">${actionLabel[log.action] || log.action} — ${log.hallName || log.reportId || ''}</div><div class="log-sub">${t('log_by')}: ${performer} · ${log.defect || ''}</div><div class="log-time">📅 ${log.dateStr}</div></div></div>`;
+                let extraHtml = '';
+                if (isLateStart) {
+                    const fileHtml = log.fileBase64 ? `<a href="${log.fileBase64}" target="_blank" download="official_document" style="color:var(--primary);text-decoration:none;font-weight:600;font-size:12px;">📎 عرض المستند الرسمي</a>` : '';
+                    extraHtml = `<div style="margin-top:6px;font-size:12.5px;color:var(--g600);background:#fff;padding:8px;border-radius:6px;border:1px dashed var(--g300)"><b>${t('lbl_late_reason') || 'السبب'}:</b> ${log.reason || '—'}<br/>${fileHtml}</div>`;
+                }
+                return `<div class="log-item"><div class="log-icon ${isDel ? 'deleted' : isLateStart ? 'status' : 'status'}" style="${isLateStart ? 'color:var(--orange);background:var(--orange-p)' : ''}">${isDel ? '🗑️' : isLateStart ? '⚠️' : '🔄'}</div><div class="log-meta"><div class="log-title">${actionLabel[log.action] || log.action} — ${log.hallName || log.reportId || ''}</div><div class="log-sub">${t('log_by')}: ${performer} · ${log.defect || ''}</div>${extraHtml}<div class="log-time">📅 ${log.dateStr}</div></div></div>`;
             }).join('');
         }
 
