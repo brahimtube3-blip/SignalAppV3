@@ -3409,14 +3409,50 @@
             <!-- ══ STATS PAGE ══ -->
             <div class="page" id="page-stats">
                 <div class="kpi-row" id="kpiRow"></div>
+
+                <!-- Useful KPI summary cards -->
+                <div class="stats-row" style="grid-template-columns:repeat(4,1fr);" id="statsUsefulRow">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#fef3c7">⏱️</div>
+                        <div>
+                            <div class="stat-val" id="statAvgTime">—</div>
+                            <div class="stat-lbl" id="statAvgTimeLbl" data-k="stat_avg_time">متوسط وقت الحل</div>
+                            <div class="stat-sub" id="statAvgTimeSub" style="font-size:11px;color:var(--g400)"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#dcfce7">✅</div>
+                        <div>
+                            <div class="stat-val" id="statResRate">0%</div>
+                            <div class="stat-lbl" id="statResRateLbl" data-k="stat_res_rate">معدل الحل</div>
+                            <div class="stat-sub" style="font-size:11px;color:var(--g400)" id="statResRateSub"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#fee2e2">⚠️</div>
+                        <div>
+                            <div class="stat-val" id="statLateCount">0</div>
+                            <div class="stat-lbl" id="statLateLbl" data-k="stat_late">بلاغات متأخرة</div>
+                            <div class="stat-sub" style="font-size:11px;color:var(--red)" id="statLateSub"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#f0fdf4">🏫</div>
+                        <div>
+                            <div class="stat-val" id="statTopRoom" style="font-size:16px">—</div>
+                            <div class="stat-lbl" id="statTopRoomLbl" data-k="stat_top_room">القاعة الأكثر بلاغات</div>
+                            <div class="stat-sub" style="font-size:11px;color:var(--g400)" id="statTopRoomSub"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid-21">
                     <div class="card">
                         <div class="ch">
-                            <h3 data-k="ch_trend">تطور البلاغات عبر الزمن</h3><span class="trend-badge up"
-                                id="trendBadge">↑ +18%</span>
+                            <h3 data-k="ch_rooms_bar">📊 البلاغات حسب القاعة</h3>
                         </div>
                         <div class="cb">
-                            <div class="chart-wrap" style="height:220px"><canvas id="lineChart"></canvas></div>
+                            <div class="chart-wrap" style="height:220px"><canvas id="roomBarChart"></canvas></div>
                         </div>
                     </div>
                     <div class="card">
@@ -3437,17 +3473,7 @@
                 </div>
                 <div class="grid-3">
                     <div class="card">
-                        <div class="ch">
-                            <h3 data-k="ch_rooms">البلاغات حسب القاعة</h3>
-                        </div>
-                        <div class="cb">
-                            <div class="mini-bar-row" id="roomBars"></div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="ch">
-                            <h3 data-k="ch_type">نوع العطل</h3>
-                        </div>
+                        <div class="ch"><h3 data-k="ch_type">نوع العطل</h3></div>
                         <div class="cb">
                             <div class="donut-wrap" style="width:150px;height:150px;"><canvas id="typeDonut"></canvas>
                                 <div class="donut-center">
@@ -3459,12 +3485,12 @@
                         </div>
                     </div>
                     <div class="card">
-                        <div class="ch">
-                            <h3 data-k="ch_heat_mini">خريطة الحرارة</h3>
-                        </div>
-                        <div class="cb" style="overflow-x:auto;">
-                            <table class="heat-table" id="heatTable"></table>
-                        </div>
+                        <div class="ch"><h3 data-k="ch_severity">مستوى الخطورة</h3></div>
+                        <div class="cb" id="severityBars" style="padding:8px 0"></div>
+                    </div>
+                    <div class="card">
+                        <div class="ch"><h3 data-k="ch_workers">أداء فريق الصيانة</h3></div>
+                        <div class="cb" id="workerPerf" style="padding:8px 0"></div>
                     </div>
                 </div>
                 <div class="card" style="margin-bottom:20px;">
@@ -3742,7 +3768,10 @@
         };
 
         let reportsUnsub = null;
+        let activityLogUnsub = null;
         let firstLoad = true;
+        let firstLogLoad = true;
+        const seenLogIds = new Set();
 
         /* ── Helper: build a data-URL from base64 string ── */
         function buildDataUrl(b64) {
@@ -3824,6 +3853,36 @@
             });
         };
 
+        window._startActivityLogListener = function () {
+            if (activityLogUnsub) activityLogUnsub();
+            const col = collection(db, "activityLog");
+            let q;
+            try { q = query(col, orderBy("performedAt", "desc"), limit(20)); } catch (e) { q = col; }
+
+            activityLogUnsub = onSnapshot(q, snap => {
+                snap.docs.forEach(d => {
+                    const data = d.data();
+                    const logId = d.id;
+
+                    if (firstLogLoad) {
+                        seenLogIds.add(logId);
+                        return;
+                    }
+
+                    if (!seenLogIds.has(logId)) {
+                        seenLogIds.add(logId);
+                        if (data.type === 'late_start') {
+                            const event = new CustomEvent('late-start-logged', { detail: data });
+                            document.dispatchEvent(event);
+                        }
+                    }
+                });
+                firstLogLoad = false;
+            }, err => {
+                console.error("ActivityLog listener error:", err);
+            });
+        };
+
         window._db = {
             async loadHalls() {
                 const snap = await getDocs(collection(db, "halls"));
@@ -3856,41 +3915,6 @@
                     });
                 } catch (e) { }
 
-                if (reporterUid && status === 'inprogress') {
-                    try {
-                        // 1. Increment points
-                        await updateDoc(doc(db, "users", reporterUid), {
-                            points: increment(10)
-                        });
-
-                        // 2. Fetch language preference
-                        const userSnap = await getDoc(doc(db, "users", reporterUid));
-                        const userData = userSnap.exists() ? userSnap.data() : {};
-                        const userLang = userData.language || 'en';
-
-                        // 3. Form localized strings
-                        let title = "Report Started 🔧";
-                        let message = "Your report is under progress! You received 10 points.";
-                        if (userLang === 'ar') {
-                            title = "بدء صيانة البلاغ 🔧";
-                            message = "بلاغك قيد الصيانة الآن! لقد حصلت على 10 نقاط.";
-                        } else if (userLang === 'fr') {
-                            title = "Signalement Commencé 🔧";
-                            message = "Votre signalement est en cours ! Vous avez reçu 10 points.";
-                        }
-
-                        // 4. Write notification to Firestore
-                        await addDoc(collection(db, "notifications"), {
-                            userUid: reporterUid,
-                            title: title,
-                            message: message,
-                            readed: false,
-                            createdAt: serverTimestamp()
-                        });
-                    } catch (e) {
-                        console.error("Error updating points/notifications:", e);
-                    }
-                }
             },
             async deleteReport(fid, rd, admin) {
                 await deleteDoc(doc(db, "reports", fid));
@@ -3918,7 +3942,8 @@
                             email: dt.email || '',
                             role: dt.role || '',
                             isBlocked: dt.isBlocked === true,
-                            points: dt.points || 0
+                            points: dt.points || 0,
+                            rewarded: dt.rewarded === true
                         };
                     });
                     return map;
@@ -3932,6 +3957,33 @@
             },
             async unblockUser(uid) {
                 await updateDoc(doc(db, "users", uid), { isBlocked: false });
+            },
+            async rewardReporter(uid) {
+                await updateDoc(doc(db, "users", uid), { rewarded: true });
+                await this.sendNotificationToUser(uid, 'notif_reward_title', 'notif_reward_msg');
+            },
+            async sendDeferredNotificationAndPoints(reportId, reporterUid) {
+                await updateDoc(doc(db, "reports", reportId), { workStartNotifSent: true });
+                if (reporterUid) {
+                    await updateDoc(doc(db, "users", reporterUid), {
+                        points: increment(10)
+                    });
+                    await this.sendNotificationToUser(reporterUid, 'notif_work_started_title', 'notif_work_started_msg');
+                }
+            },
+            async logLateStart(reportId, reason, fileBase64, workerEmail, workerName, hallName, defect) {
+                await addDoc(collection(db, "activityLog"), {
+                    reportId,
+                    action: 'late_start',
+                    reason,
+                    fileBase64,
+                    workerEmail,
+                    workerName,
+                    hallName,
+                    defect,
+                    performedAt: serverTimestamp(),
+                    type: 'late_start'
+                });
             },
             async sendNotificationToUser(reporterUid, titleKey, msgKey) {
                 try {
@@ -3966,7 +4018,10 @@
                 });
                 document.getElementById('loadingOverlay').classList.remove('hidden');
                 firstLoad = true;
+                firstLogLoad = true;
+                seenLogIds.clear();
                 window._startReportsListener();
+                window._startActivityLogListener();
                 window._db.loadHalls().then(halls => {
                     window._rooms = halls; window._hallsLoaded = true;
                     document.dispatchEvent(new Event('halls-loaded'));
@@ -3977,6 +4032,9 @@
                 document.getElementById('authScreen').classList.remove('hidden');
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 if (reportsUnsub) { reportsUnsub(); reportsUnsub = null; }
+                if (activityLogUnsub) { activityLogUnsub(); activityLogUnsub = null; }
+                firstLogLoad = true;
+                seenLogIds.clear();
             }
         });
     </script>
@@ -4066,7 +4124,9 @@
                 btn_reward: '🏅 مكافأة', btn_details: '👁 تفاصيل',
                 rd_title: 'ملف المُبلِّغ', rd_lbl_reports: 'البلاغات', rd_lbl_pending: 'معلقة', rd_lbl_done: 'مكتملة',
                 rd_role: 'الدور', rd_joined: 'تاريخ الانضمام', rd_status: 'الحالة', rd_lbl_block: '⛔ حظر الحساب', rd_lbl_unblock: '✅ رفع الحظر',
-                err_workflow: '⚠ لا يمكن الانتقال مباشرة من معلق إلى مكتمل. يجب بدء المعالجة أولاً.'
+                err_workflow: '⚠ لا يمكن الانتقال مباشرة من معلق إلى مكتمل. يجب بدء المعالجة أولاً.',
+                stat_avg_time: 'متوسط وقت الحل', stat_res_rate: 'معدل الحل', stat_late: 'بلاغات متأخرة (+3 أيام)', stat_top_room: 'القاعة الأكثر بلاغات',
+                ch_rooms_bar: '📊 البلاغات حسب القاعة', ch_severity: 'مستوى الخطورة', ch_workers: 'أداء فريق الصيانة', btn_rewarded: '🏆 تم مكافأته', notif_new_report: '🔔 بلاغ جديد في'
             },
             fr: {
                 app_title: "Maintenance", app_sub: "Complexe Informatique", univ: "Université de Laghouat",
@@ -4137,7 +4197,9 @@
                 btn_reward: '🏅 Récompenser', btn_details: '👁 Détails',
                 rd_title: 'Profil Rapporteur', rd_lbl_reports: 'Signalements', rd_lbl_pending: 'En attente', rd_lbl_done: 'Terminés',
                 rd_role: 'Rôle', rd_joined: "Date d'inscription", rd_status: 'Statut', rd_lbl_block: '⛔ Bloquer', rd_lbl_unblock: '✅ Débloquer',
-                err_workflow: '⚠ Impossible de passer directement de En attente à Terminé.'
+                err_workflow: '⚠ Impossible de passer directement de En attente à Terminé.',
+                stat_avg_time: 'Délai moyen', stat_res_rate: 'Taux de résolution', stat_late: 'Retard (+3 jours)', stat_top_room: 'Salle la plus signalée',
+                ch_rooms_bar: '📊 Signalements par salle', ch_severity: 'Niveau de gravité', ch_workers: 'Performance des techniciens', btn_rewarded: '🏆 Récompensé', notif_new_report: '🔔 Nouveau signalement dans'
             },
             en: {
                 app_title: "Maintenance Panel", app_sub: "CS Complex", univ: "University of Laghouat",
@@ -4206,7 +4268,9 @@
                 btn_reward: '🏅 Reward', btn_details: '👁 Details',
                 rd_title: 'Reporter Profile', rd_lbl_reports: 'Reports', rd_lbl_pending: 'Pending', rd_lbl_done: 'Completed',
                 rd_role: 'Role', rd_joined: 'Joined', rd_status: 'Status', rd_lbl_block: '⛔ Block Account', rd_lbl_unblock: '✅ Unblock',
-                err_workflow: '⚠ Cannot skip from Pending directly to Complete. Start processing first.'
+                err_workflow: '⚠ Cannot skip from Pending directly to Complete. Start processing first.',
+                stat_avg_time: 'Avg Resolution Time', stat_res_rate: 'Resolution Rate', stat_late: 'Late Reports (+3 days)', stat_top_room: 'Most Reported Room',
+                ch_rooms_bar: '📊 Reports by Room', ch_severity: 'Severity Level', ch_workers: 'Worker Performance', btn_rewarded: '🏆 Rewarded', notif_new_report: '🔔 New report in'
             }
         };
 
@@ -4248,7 +4312,7 @@
                     // Desktop Notification
                     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                         try {
-                            new Notification(`بلاغ جديد في ${r.room}`, {
+                            new Notification(`${t('notif_new_report')} ${r.room}`, {
                                 body: `${t(r.defect)}\n${r.note || ''}`,
                             });
                         } catch (e) { console.error("Desktop Notification error:", e); }
@@ -4282,7 +4346,7 @@
     <div class="notif-item ${isUnread ? 'unread' : 'read'}" onclick="openReportModal('${r.firestoreId}')">
       <div class="notif-icon">🔔</div>
       <div class="notif-text">
-        <div class="notif-title">بلاغ جديد في ${r.room}</div>
+        <div class="notif-title">${t('notif_new_report')} ${r.room}</div>
         <div class="notif-sub">${t(r.defect) || r.defect}</div>
         <div class="notif-time">${r.date}</div>
       </div>
@@ -4365,7 +4429,11 @@
             document.querySelectorAll('.lb').forEach(b => b.classList.remove('active'));
             document.querySelector(`.lb[onclick="setLang('${l}')"]`).classList.add('active');
             applyT();
-            renderTable(); renderRoomBreakdown(); renderLeaderboard(); renderRooms(); renderNotifList();
+            // Re-apply the current page title with the new language
+            const titles = { dashboard: t('pg_dashboard'), rooms: t('pg_rooms'), stats: t('pg_stats'), log: t('pg_log'), spam: t('pg_spam') };
+            const ptEl = document.getElementById('pageTitle');
+            if (ptEl && titles[currentPage]) ptEl.textContent = titles[currentPage];
+            renderTable(); renderRoomBreakdown(); renderLeaderboard(); buildLeaderboardFull(); renderRooms(); renderNotifList();
             if (document.getElementById('page-stats').classList.contains('active')) buildStats();
         }
         function applyT() {
@@ -4557,8 +4625,7 @@
             if (_deferredNotifTriggered.has(r.firestoreId)) return;
             _deferredNotifTriggered.add(r.firestoreId);
             try {
-                await updateDoc(doc(db, "reports", r.firestoreId), { workStartNotifSent: true });
-                await window._db.sendNotificationToUser(r.reporterUid, 'notif_work_started_title', 'notif_work_started_msg');
+                await window._db.sendDeferredNotificationAndPoints(r.firestoreId, r.reporterUid);
             } catch (e) { console.error('Deferred notif error:', e); }
         }
 
@@ -4629,9 +4696,8 @@
                 });
 
                 const report = reports.find(r => r.firestoreId === firestoreId);
-                const awardPoints = true;
 
-                await window._db.updateReportStatus(firestoreId, 'inprogress', window._adminEmail, awardPoints ? report?.reporterUid : null);
+                await window._db.updateReportStatus(firestoreId, 'inprogress', window._adminEmail, null);
 
                 let workerName = window._adminEmail;
                 if (window._usersMap) {
@@ -4639,18 +4705,15 @@
                     if (u) workerName = u.name || window._adminEmail;
                 }
 
-                await addDoc(collection(db, "activityLog"), {
-                    reportId: firestoreId,
-                    action: 'late_start',
-                    reason: reason,
-                    fileBase64: fileBase64,
-                    workerEmail: window._adminEmail,
-                    workerName: workerName,
-                    hallName: report?.room || '—',
-                    defect: report?.defect || '—',
-                    performedAt: serverTimestamp(),
-                    type: 'late_start'
-                });
+                await window._db.logLateStart(
+                    firestoreId,
+                    reason,
+                    fileBase64,
+                    window._adminEmail,
+                    workerName,
+                    report?.room || '—',
+                    report?.defect || '—'
+                );
 
                 showToast(t('toast_started'), '', 'success');
                 closeModal('lateStartModal');
@@ -4661,6 +4724,31 @@
                 btn.textContent = t('btn_submit_late');
             }
         }
+
+        document.addEventListener('late-start-logged', e => {
+            const log = e.detail;
+            if (log.workerEmail === window._adminEmail) return;
+
+            const title = t('late_start_title') || '⚠️ تأخر في بدء البلاغ';
+            const msg = `${log.workerName || log.workerEmail}: ${t(log.defect) || log.defect} - ${log.hallName || ''}`;
+
+            showToast(msg, false, 'warning');
+
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                try {
+                    new Notification(title, { body: msg });
+                } catch (err) { console.error("Desktop notification error:", err); }
+            }
+
+            try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
+                audio.play().catch(e => console.log("Audio play blocked"));
+            } catch (err) {}
+
+            if (currentPage === 'log') {
+                loadActivityLog();
+            }
+        });
 
         function openDeleteReportModal(firestoreId) {
             const r = reports.find(x => x.firestoreId === firestoreId); if (!r) return;
@@ -4873,56 +4961,147 @@
 
         /* ═══ STATS ═══ */
         let statsPeriod = 'week', statsCharts = {};
-        const STATS_DATA = {
-            week: { kpi: { total: 12, pending: 5, done: 4, rate: 78, avg: 2.3 }, line: { labels: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'], submitted: [2, 1, 3, 2, 1, 2, 1], resolved: [1, 1, 2, 1, 0, 2, 1] }, status: { pending: 5, inprog: 3, done: 4 }, rooms: [{ n: 'TD 01', v: 4 }, { n: 'TD 02', v: 3 }, { n: 'TP 01', v: 3 }, { n: 'TP 02', v: 2 }], defects: { elec: 3, network: 3, clean: 2, broken: 3, other: 1 }, heat: { rooms: ['TD 01', 'TD 02', 'TP 01', 'TP 02'], vals: [[1, 2, 0, 1], [0, 1, 2, 0], [1, 1, 1, 0], [0, 0, 1, 1]] }, trend: '+18%', trendDir: 'up' },
-            month: { kpi: { total: 38, pending: 9, done: 24, rate: 83, avg: 1.8 }, line: { labels: ['أ1', 'أ2', 'أ3', 'أ4', 'م1', 'م2', 'م3', 'م4'], submitted: [5, 4, 6, 3, 5, 4, 6, 5], resolved: [3, 4, 5, 2, 4, 3, 5, 4] }, status: { pending: 9, inprog: 5, done: 24 }, rooms: [{ n: 'TD 01', v: 12 }, { n: 'TD 02', v: 9 }, { n: 'TP 01', v: 10 }, { n: 'TP 02', v: 7 }], defects: { elec: 9, network: 8, clean: 7, broken: 10, other: 4 }, heat: { rooms: ['TD 01', 'TD 02', 'TP 01', 'TP 02'], vals: [[3, 2, 4, 3], [2, 2, 3, 2], [2, 3, 2, 3], [1, 2, 2, 2]] }, trend: '+12%', trendDir: 'up' },
-            semester: { kpi: { total: 142, pending: 15, done: 118, rate: 91, avg: 1.4 }, line: { labels: ['فيف', 'مار', 'أبر', 'ماي', 'جوان', 'جوي', 'أوت', 'سبت', 'أكت', 'نوف', 'ديس', 'جان'], submitted: [8, 10, 12, 14, 9, 11, 13, 15, 12, 14, 16, 8], resolved: [6, 9, 11, 13, 8, 10, 12, 14, 11, 13, 15, 6] }, status: { pending: 15, inprog: 9, done: 118 }, rooms: [{ n: 'TD 01', v: 38 }, { n: 'TD 02', v: 32 }, { n: 'TP 01', v: 42 }, { n: 'TP 02', v: 30 }], defects: { elec: 30, network: 28, clean: 24, broken: 42, other: 18 }, heat: { rooms: ['TD 01', 'TD 02', 'TP 01', 'TP 02'], vals: [[8, 6, 10, 7], [5, 7, 9, 6], [10, 8, 8, 9], [6, 5, 7, 8]] }, trend: '+24%', trendDir: 'up' }
-        };
         const COLORS = { primary: '#143601', mid: '#538d22', light: '#aad576', green: '#22c55e', yellow: '#eab308', red: '#ef4444', orange: '#f97316', purple: '#8b5cf6' };
         function destroyChart(id) { if (statsCharts[id]) { statsCharts[id].destroy(); delete statsCharts[id]; } }
 
         function buildStats() {
-            const d = STATS_DATA[statsPeriod];
-            buildKPIs(d); buildLineChart(d); buildStatusDonut(d); buildRoomBars(d); buildTypeDonut(d); buildHeatMap(d); buildLeaderboardFull();
-            const tb = document.getElementById('trendBadge'); tb.className = `trend-badge ${d.trendDir}`; tb.textContent = (d.trendDir === 'up' ? '↑ ' : '↓ ') + d.trend;
+            const valid = reports.filter(r => r.aiSpam !== true);
+
+            // --- KPIs (4 useful cards) ---
+            const total = valid.length;
+            const pending = valid.filter(r => r.status === 'pending').length;
+            const inprog = valid.filter(r => r.status === 'inprogress').length;
+            const done = valid.filter(r => r.status === 'complete').length;
+            const resRate = total ? Math.round((done / total) * 100) : 0;
+
+            // Avg resolution time (hours) from startedAt to... use now for inprogress, no data for complete (no completedAt), so approximate
+            const withStart = valid.filter(r => r.status !== 'pending' && r.startedAt && r.ts);
+            let avgHours = '—';
+            if (withStart.length) {
+                const avg = withStart.reduce((sum, r) => sum + (r.startedAt - r.ts), 0) / withStart.length;
+                avgHours = Math.round(avg / 3600000) + 'h';
+            }
+
+            // Late reports: still pending or inprogress after 3 days
+            const threeDays = 3 * 24 * 60 * 60 * 1000;
+            const lateCount = valid.filter(r => (r.status === 'pending' || r.status === 'inprogress') && r.ts && (Date.now() - r.ts > threeDays)).length;
+
+            // Top room by report count
+            const roomCounts = {};
+            valid.forEach(r => { roomCounts[r.room] = (roomCounts[r.room] || 0) + 1; });
+            const topRoom = Object.entries(roomCounts).sort((a, b) => b[1] - a[1])[0];
+
+            // Render 4-KPI cards
+            const kpiEl = document.getElementById('statsUsefulRow');
+            if (kpiEl) {
+                document.getElementById('statAvgTime').textContent = avgHours;
+                document.getElementById('statResRate').textContent = resRate + '%';
+                document.getElementById('statResRateSub').textContent = `${done} / ${total}`;
+                document.getElementById('statLateCount').textContent = lateCount;
+                document.getElementById('statLateSub').textContent = lateCount ? t('stat_pending') + ' / ' + t('status_inprogress') : '✅';
+                if (topRoom) {
+                    document.getElementById('statTopRoom').textContent = topRoom[0];
+                    document.getElementById('statTopRoomSub').textContent = topRoom[1] + ' ' + (t('reports_acc') || 'بلاغ');
+                } else {
+                    document.getElementById('statTopRoom').textContent = '—';
+                }
+            }
+
+            // Hide the KPI row (dummy) and trend badge if they exist
+            const kpiRow = document.getElementById('kpiRow'); if (kpiRow) kpiRow.style.display = 'none';
+            const trendBadge = document.getElementById('trendBadge'); if (trendBadge) trendBadge.style.display = 'none';
+
+            buildStatusDonutLive(pending, inprog, done);
+            buildRoomBarChartLive(valid, roomCounts);
+            buildTypeDonutLive(valid);
+            buildSeverityBars(valid);
+            buildWorkerPerf(valid);
+            buildLeaderboardFull();
         }
-        function buildKPIs(d) {
-            const items = [{ cls: 'k-green', icon: '📋', val: d.kpi.total, lbl: 'kpi_total', delta: 'kpi_d_total', dd: 'up' }, { cls: 'k-yellow', icon: '⏳', val: d.kpi.pending, lbl: 'kpi_pending', delta: 'kpi_d_pending', dd: 'down' }, { cls: 'k-light', icon: '✅', val: d.kpi.done, lbl: 'kpi_done', delta: 'kpi_d_done', dd: 'up' }, { cls: 'k-purple', icon: '📈', val: d.kpi.rate + '%', lbl: 'kpi_rate', delta: 'kpi_d_rate', dd: 'up' }, { cls: 'k-red', icon: '⏱️', val: d.kpi.avg, lbl: 'kpi_avg', delta: 'kpi_d_avg', dd: 'flat' }];
-            document.getElementById('kpiRow').innerHTML = items.map((k, i) => `<div class="kpi ${k.cls}" style="animation-delay:${i * .07}s"><div class="kpi-icon">${k.icon}</div><div class="kpi-val">${k.val}</div><div class="kpi-lbl">${t(k.lbl)}</div><div class="kpi-delta ${k.dd}">${t(k.delta)}</div></div>`).join('');
-        }
-        function buildLineChart(d) {
-            destroyChart('lineChart');
-            const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
-            statsCharts.lineChart = new Chart(ctx, { type: 'line', data: { labels: d.line.labels, datasets: [{ label: t('stat_pending'), data: d.line.submitted, borderColor: COLORS.mid, backgroundColor: 'rgba(83,141,34,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }, { label: t('stat_done'), data: d.line.resolved, borderColor: COLORS.light, backgroundColor: 'rgba(170,213,118,.08)', tension: .4, fill: true, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { family: 'Tajawal', size: 12 }, boxWidth: 10, padding: 14 } } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 } } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { family: 'IBM Plex Sans Arabic', size: 11 }, stepSize: 1 } } } } });
-        }
-        function buildStatusDonut(d) {
+
+        function buildStatusDonutLive(pending, inprog, done) {
             destroyChart('statusDonut');
-            const vals = [d.status.pending, d.status.inprog, d.status.done], total = vals.reduce((a, b) => a + b, 0);
+            const vals = [pending, inprog, done], total = vals.reduce((a, b) => a + b, 0);
             const el = document.getElementById('donut-total'); if (el) el.textContent = total;
-            const labels = [t('status_pending'), t('status_inprogress'), t('status_complete')], colors = [COLORS.yellow, COLORS.mid, COLORS.green];
+            const labels = [t('status_pending'), t('status_inprogress'), t('status_complete')];
+            const colors = [COLORS.yellow, COLORS.mid, COLORS.green];
             const ctx = document.getElementById('statusDonut')?.getContext('2d'); if (!ctx) return;
-            statsCharts.statusDonut = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '68%', plugins: { legend: { display: false } } } });
-            document.getElementById('statusLegend').innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
+            statsCharts.statusDonut = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }] },
+                options: { responsive: true, maintainAspectRatio: true, cutout: '68%', plugins: { legend: { display: false } } }
+            });
+            const leg = document.getElementById('statusLegend'); if (leg)
+                leg.innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
         }
-        function buildRoomBars(d) {
-            const max = Math.max(...d.rooms.map(r => r.v), 1);
-            document.getElementById('roomBars').innerHTML = d.rooms.map(r => `<div class="mbr"><div class="mbr-top"><span class="mbr-name">${r.n}</span><span class="mbr-val">${r.v}</span></div><div class="mbr-track"><div class="mbr-fill" style="width:${Math.round(r.v / max * 100)}%;background:${r.n.startsWith('TD') ? COLORS.mid : COLORS.light}"></div></div></div>`).join('');
+
+        function buildRoomBarChartLive(valid, roomCounts) {
+            destroyChart('roomBarChart');
+            const sorted = Object.entries(roomCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            const ctx = document.getElementById('roomBarChart')?.getContext('2d'); if (!ctx) return;
+            statsCharts.roomBarChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(([r]) => r),
+                    datasets: [{
+                        label: t('tbl_title') || 'بلاغات',
+                        data: sorted.map(([, v]) => v),
+                        backgroundColor: sorted.map(([r]) => r.startsWith('TD') ? COLORS.mid : COLORS.light),
+                        borderRadius: 5, borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, stepSize: 1 } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+                }
+            });
         }
-        function buildTypeDonut(d) {
+
+        function buildTypeDonutLive(valid) {
             destroyChart('typeDonut');
-            const { elec = 0, network = 0, clean = 0, broken = 0, other = 0 } = d.defects, vals = [elec, network, clean, broken, other], total = vals.reduce((a, b) => a + b, 0);
+            const counts = { elec: 0, network: 0, clean: 0, broken: 0, other: 0 };
+            valid.forEach(r => { const c = getDefectClass(r.defect); counts[c] = (counts[c] || 0) + 1; });
+            const { elec, network, clean, broken, other } = counts;
+            const vals = [elec, network, clean, broken, other], total = vals.reduce((a, b) => a + b, 0);
             const el = document.getElementById('type-total'); if (el) el.textContent = total;
-            const labels = [t('defect_elec'), t('defect_network'), t('defect_clean'), t('defect_broken'), t('defect_other')], colors = [COLORS.yellow, COLORS.mid, COLORS.green, COLORS.red, COLORS.purple];
+            const labels = [t('defect_elec'), t('defect_network'), t('defect_clean'), t('defect_broken'), t('defect_other')];
+            const colors = [COLORS.yellow, COLORS.mid, COLORS.green, COLORS.red, COLORS.purple];
             const ctx = document.getElementById('typeDonut')?.getContext('2d'); if (!ctx) return;
-            statsCharts.typeDonut = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { display: false } } } });
-            document.getElementById('typeLegend').innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
+            statsCharts.typeDonut = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] },
+                options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { display: false } } }
+            });
+            const leg = document.getElementById('typeLegend'); if (leg)
+                leg.innerHTML = labels.map((l, i) => `<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div><span class="leg-name">${l}</span><span class="leg-val">${vals[i]}</span><span class="leg-pct">${total ? Math.round(vals[i] / total * 100) : 0}%</span></div>`).join('');
         }
-        function buildHeatMap(d) {
-            const weeks = [1, 2, 3, 4];
-            let html = `<thead><tr><th>${t('heat_floor')}</th>${weeks.map(w => `<th>${t('heat_week')} ${w}</th>`).join('')}</tr></thead><tbody>`;
-            d.heat.rooms.forEach((room, ri) => { html += `<tr><td class="room-name">${room}</td>`; d.heat.vals[ri].forEach(v => { const cls = v === 0 ? 'hc-0' : v <= 1 ? 'hc-1' : v <= 2 ? 'hc-2' : 'hc-3'; html += `<td><span class="hc ${cls}">${v}</span></td>`; }); html += `</tr>`; });
-            html += `</tbody>`; document.getElementById('heatTable').innerHTML = html;
+
+        function buildSeverityBars(valid) {
+            const el = document.getElementById('severityBars'); if (!el) return;
+            const sevMap = {};
+            valid.forEach(r => { const s = r.severity || 'عادي'; sevMap[s] = (sevMap[s] || 0) + 1; });
+            const sorted = Object.entries(sevMap).sort((a, b) => b[1] - a[1]);
+            const max = sorted[0] ? sorted[0][1] : 1;
+            const sevColors = { 'عاجل': COLORS.red, 'مرتفع': COLORS.orange, 'عادي': COLORS.mid, 'منخفض': COLORS.light, 'Urgent': COLORS.red, 'High': COLORS.orange, 'Normal': COLORS.mid, 'Low': COLORS.light };
+            el.innerHTML = sorted.length ? sorted.map(([s, v]) => `<div class="mbr"><div class="mbr-top"><span class="mbr-name">${s}</span><span class="mbr-val">${v}</span></div><div class="mbr-track"><div class="mbr-fill" style="width:${Math.round(v/max*100)}%;background:${sevColors[s]||COLORS.mid}"></div></div></div>`).join('') :
+                `<div class="empty-state"><p>${t('empty')}</p></div>`;
         }
+
+        function buildWorkerPerf(valid) {
+            const el = document.getElementById('workerPerf'); if (!el) return;
+            const pending = valid.filter(r => r.status === 'pending').length;
+            const inprog = valid.filter(r => r.status === 'inprogress').length;
+            const done = valid.filter(r => r.status === 'complete').length;
+            const total = valid.length || 1;
+            const metrics = [
+                { label: t('status_pending'), val: pending, pct: Math.round(pending/total*100), color: COLORS.yellow },
+                { label: t('status_inprogress'), val: inprog, pct: Math.round(inprog/total*100), color: COLORS.mid },
+                { label: t('status_complete'), val: done, pct: Math.round(done/total*100), color: COLORS.green }
+            ];
+            el.innerHTML = metrics.map(m => `<div class="mbr"><div class="mbr-top"><span class="mbr-name">${m.label}</span><span class="mbr-val">${m.val} (${m.pct}%)</span></div><div class="mbr-track"><div class="mbr-fill" style="width:${m.pct}%;background:${m.color}"></div></div></div>`).join('');
+        }
+
         function buildLeaderboardFull() {
             const c = document.getElementById('leaderboardFull'); if (!c) return;
             if (!window._usersMap) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
@@ -4976,7 +5155,11 @@
                     let actions = '';
                     if (isAdmin) {
                         if (i === 0) {
-                            actions += `<button class="btn-reward" onclick="rewardReporter('${u.uid}')" title="${t('btn_reward')}">${t('btn_reward')}</button> `;
+                            if (u.rewarded) {
+                                actions += `<button class="btn-rewarded" disabled style="background:#538d22;color:#fff;cursor:not-allowed;font-size:11px;padding:4px 8px;border-radius:4px;border:none;">${t('btn_rewarded') || '🏆 تم مكافأته'}</button> `;
+                            } else {
+                                actions += `<button class="btn-reward" onclick="rewardReporter('${u.uid}')" title="${t('btn_reward')}">${t('btn_reward')}</button> `;
+                            }
                         }
                         actions += `<button class="btn-details-sm" onclick="openReporterDetails('${u.uid}')">${t('btn_details')}</button>`;
                         if (u.isBlocked) {
@@ -5003,8 +5186,12 @@
         async function rewardReporter(uid) {
             if (window._adminRole !== 'admin') return;
             try {
-                await window._db.sendNotificationToUser(uid, 'notif_reward_title', 'notif_reward_msg');
+                await window._db.rewardReporter(uid);
+                if (window._usersMap && window._usersMap[uid]) {
+                    window._usersMap[uid].rewarded = true;
+                }
                 showToast('🏆 ' + (t('notif_reward_title') || 'Reward sent!'), '', 'success');
+                buildLeaderboardFull();
             } catch (e) { showToast(t('toast_error'), true); }
         }
 
