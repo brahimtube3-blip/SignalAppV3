@@ -4126,7 +4126,8 @@
                 rd_role: 'الدور', rd_joined: 'تاريخ الانضمام', rd_status: 'الحالة', rd_lbl_block: '⛔ حظر الحساب', rd_lbl_unblock: '✅ رفع الحظر',
                 err_workflow: '⚠ لا يمكن الانتقال مباشرة من معلق إلى مكتمل. يجب بدء المعالجة أولاً.',
                 stat_avg_time: 'متوسط وقت الحل', stat_res_rate: 'معدل الحل', stat_late: 'بلاغات متأخرة (+3 أيام)', stat_top_room: 'القاعة الأكثر بلاغات',
-                ch_rooms_bar: '📊 البلاغات حسب القاعة', ch_severity: 'مستوى الخطورة', ch_workers: 'أداء فريق الصيانة', btn_rewarded: '🏆 تم مكافأته', notif_new_report: '🔔 بلاغ جديد في'
+                ch_rooms_bar: '📊 البلاغات حسب القاعة', ch_severity: 'مستوى الخطورة', ch_workers: 'أداء فريق الصيانة', btn_rewarded: '🏆 تم مكافأته', notif_new_report: '🔔 بلاغ جديد في',
+                view_only_banner: 'وضع العرض فقط — يمكن للعامل فقط إدارة البلاغات'
             },
             fr: {
                 app_title: "Maintenance", app_sub: "Complexe Informatique", univ: "Université de Laghouat",
@@ -4199,7 +4200,8 @@
                 rd_role: 'Rôle', rd_joined: "Date d'inscription", rd_status: 'Statut', rd_lbl_block: '⛔ Bloquer', rd_lbl_unblock: '✅ Débloquer',
                 err_workflow: '⚠ Impossible de passer directement de En attente à Terminé.',
                 stat_avg_time: 'Délai moyen', stat_res_rate: 'Taux de résolution', stat_late: 'Retard (+3 jours)', stat_top_room: 'Salle la plus signalée',
-                ch_rooms_bar: '📊 Signalements par salle', ch_severity: 'Niveau de gravité', ch_workers: 'Performance des techniciens', btn_rewarded: '🏆 Récompensé', notif_new_report: '🔔 Nouveau signalement dans'
+                ch_rooms_bar: '📊 Signalements par salle', ch_severity: 'Niveau de gravité', ch_workers: 'Performance des techniciens', btn_rewarded: '🏆 Récompensé', notif_new_report: '🔔 Nouveau signalement dans',
+                view_only_banner: 'Mode lecture seule — seul le technicien peut gérer les signalements'
             },
             en: {
                 app_title: "Maintenance Panel", app_sub: "CS Complex", univ: "University of Laghouat",
@@ -4270,7 +4272,8 @@
                 rd_role: 'Role', rd_joined: 'Joined', rd_status: 'Status', rd_lbl_block: '⛔ Block Account', rd_lbl_unblock: '✅ Unblock',
                 err_workflow: '⚠ Cannot skip from Pending directly to Complete. Start processing first.',
                 stat_avg_time: 'Avg Resolution Time', stat_res_rate: 'Resolution Rate', stat_late: 'Late Reports (+3 days)', stat_top_room: 'Most Reported Room',
-                ch_rooms_bar: '📊 Reports by Room', ch_severity: 'Severity Level', ch_workers: 'Worker Performance', btn_rewarded: '🏆 Rewarded', notif_new_report: '🔔 New report in'
+                ch_rooms_bar: '📊 Reports by Room', ch_severity: 'Severity Level', ch_workers: 'Worker Performance', btn_rewarded: '🏆 Rewarded', notif_new_report: '🔔 New report in',
+                view_only_banner: 'View Only — only the worker can manage reports'
             }
         };
 
@@ -4538,38 +4541,31 @@
                 let ab = `<button class="btn-sm btn-ghost" onclick="openReportModal('${r.firestoreId}')">${t('btn_view')}</button>`;
                 const isWorker = window._adminRole === 'worker';
 
-                if (r.status === 'pending') {
-                    ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
-                    // Workers cannot skip to complete
-                    // Admins get no direct-complete from pending either (enforce workflow)
-                }
-
-                if (r.status === 'inprogress') {
-                    const timeSinceStart = r.startedAt ? (Date.now() - r.startedAt) : 0;
-                    const passed15min = timeSinceStart > 15 * 60 * 1000;
-                    const disableBack = isWorker && passed15min;
-
-                    if (disableBack) {
-                        ab += `<button class="btn-sm btn-warn" disabled style="opacity:0.45;cursor:not-allowed" title="${t('err_15min') || 'Time window expired'}">${t('btn_back_pending')}</button>`;
-                    } else {
-                        ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','pending')">${t('btn_back_pending')}</button>`;
+                // Only the worker can manage report statuses and delete
+                if (isWorker) {
+                    if (r.status === 'pending') {
+                        ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
                     }
-                    ab += `<button class="btn-sm btn-success" onclick="changeStatus('${r.firestoreId}','complete')">${t('btn_finish')}</button>`;
 
-                    // Trigger deferred 15-min notification to reporter (once)
-                    if (passed15min && !r.workStartNotifSent && r.reporterUid) {
-                        checkAndSendDeferredNotif(r);
+                    if (r.status === 'inprogress') {
+                        const timeSinceStart = r.startedAt ? (Date.now() - r.startedAt) : 0;
+                        const passed15min = timeSinceStart > 15 * 60 * 1000;
+
+                        if (passed15min) {
+                            ab += `<button class="btn-sm btn-warn" disabled style="opacity:0.45;cursor:not-allowed" title="${t('err_15min') || 'Time window expired'}">${t('btn_back_pending')}</button>`;
+                        } else {
+                            ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','pending')">${t('btn_back_pending')}</button>`;
+                        }
+                        ab += `<button class="btn-sm btn-success" onclick="changeStatus('${r.firestoreId}','complete')">${t('btn_finish')}</button>`;
+
+                        // Trigger deferred 15-min notification to reporter (once)
+                        if (passed15min && !r.workStartNotifSent && r.reporterUid) {
+                            checkAndSendDeferredNotif(r);
+                        }
                     }
-                }
 
-                if (r.status === 'complete') {
-                    // Only admins can revert a completed report
-                    if (!isWorker) {
-                        ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_back_inprog')}</button>`;
-                    }
+                    ab += `<button class="btn-sm btn-danger-sm" onclick="openDeleteReportModal('${r.firestoreId}')">${t('btn_del_report')}</button>`;
                 }
-
-                ab += `<button class="btn-sm btn-danger-sm" onclick="openDeleteReportModal('${r.firestoreId}')">${t('btn_del_report')}</button>`;
                 const aiStatus = r.aiCheckDone ? (r.aiSpam ? '' : '<span class="ai-indicator pass" style="margin-left:5px" title="AI Verified">🛡️</span>') : (r.hasImage ? '<span class="ai-indicator pending" style="margin-left:5px" title="AI Checking...">⏳</span>' : '');
                 return `<tr class="row-${cls} status-${r.status}">
       <td><span class="row-num">${idx + 1}</span></td>
@@ -4816,6 +4812,9 @@
             document.getElementById('reportModalTitle').textContent = `${t('modal_title')} — ${r.id}`;
             const localizedDefectModal = t(r.defect) + (r.reason && r.reason !== '—' ? ` - ${t(r.reason)}` : '');
             document.getElementById('reportModalBody').innerHTML = `
+    ${window._adminRole !== 'worker' ? `<div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 13px;margin-bottom:12px;font-size:12.5px;color:#166534;font-weight:600">
+        👁 ${t('view_only_banner')}
+    </div>` : ''}
     <div class="info-row"><span class="label">${t('lbl_room')}</span><span class="value">🏫 ${r.room}</span></div>
     <div class="info-row"><span class="label">${t('lbl_type')}</span><span class="value"><span class="type-chip ${cls}">${emoji} ${localizedDefectModal}</span></span></div>
     <div class="info-row"><span class="label">${t('lbl_status')}</span><span class="value">${getStatusBadge(r.status)}</span></div>
@@ -4826,15 +4825,22 @@
     ${getStatusFlowHTML(r.status)}`;
 
             const footer = document.getElementById('reportModalFooter');
-            let btns = `<button class="btn-lg outline" onclick="openDeleteReportModal('${r.firestoreId}');closeModal('reportModal')">${t('btn_del_report')}</button>`;
-            btns += `<button class="btn-lg outline" onclick="closeModal('reportModal')">${t('btn_close')}</button>`;
-            if (r.status === 'inprogress') {
-                btns += `<button class="btn-lg warn" onclick="changeStatus('${r.firestoreId}','pending');closeModal('reportModal')">${t('btn_revert_pending')}</button>`;
-                btns += `<button class="btn-lg success" onclick="changeStatus('${r.firestoreId}','complete');closeModal('reportModal')">${t('btn_mark_done')}</button>`;
-            } else if (r.status === 'pending') {
-                btns += `<button class="btn-lg primary" onclick="changeStatus('${r.firestoreId}','inprogress');closeModal('reportModal')">${t('btn_start_proc')}</button>`;
-            } else if (r.status === 'complete') {
-                btns += `<button class="btn-lg warn" onclick="changeStatus('${r.firestoreId}','inprogress');closeModal('reportModal')">${t('btn_revert_inprog')}</button>`;
+            const isWorkerModal = window._adminRole === 'worker';
+            // Admin: view-only modal, no actions
+            let btns = `<button class="btn-lg outline" onclick="closeModal('reportModal')">${t('btn_close')}</button>`;
+            if (isWorkerModal) {
+                // Worker: full action buttons
+                if (r.status === 'inprogress') {
+                    const timeSinceStart = r.startedAt ? (Date.now() - r.startedAt) : 0;
+                    const passed15min = timeSinceStart > 15 * 60 * 1000;
+                    if (!passed15min) {
+                        btns = `<button class="btn-lg warn" onclick="changeStatus('${r.firestoreId}','pending');closeModal('reportModal')">${t('btn_revert_pending')}</button>` + btns;
+                    }
+                    btns = `<button class="btn-lg success" onclick="changeStatus('${r.firestoreId}','complete');closeModal('reportModal')">${t('btn_mark_done')}</button>` + btns;
+                } else if (r.status === 'pending') {
+                    btns = `<button class="btn-lg primary" onclick="changeStatus('${r.firestoreId}','inprogress');closeModal('reportModal')">${t('btn_start_proc')}</button>` + btns;
+                }
+                btns = `<button class="btn-lg outline" onclick="openDeleteReportModal('${r.firestoreId}');closeModal('reportModal')">${t('btn_del_report')}</button>` + btns;
             }
             footer.innerHTML = btns;
             openModal('reportModal');
