@@ -3034,6 +3034,53 @@
             opacity: 0.7;
             filter: grayscale(0.5);
         }
+
+        /* WORKFLOW STEP INDICATOR */
+        .wf-step { padding: 4px 10px; border-radius: 20px; background: #e5e7eb; color: #6b7280; white-space: nowrap; font-size:11px; font-weight:600; }
+        .wf-step.active { background: var(--primary); color: #fff; }
+        .wf-step.done { background: #bbf7d0; color: #166534; }
+        .wf-arrow { color: #9ca3af; font-size: 13px; }
+
+        /* REPORTER RANKING TABLE */
+        .rank-table-wrap { overflow-x: auto; }
+        .rank-table { width: 100%; border-collapse: collapse; }
+        .rank-table thead th { font-size: 11.5px; font-weight: 700; color: var(--g500); padding: 10px 14px; text-align: right; border-bottom: 2px solid var(--g200); background: var(--g50); }
+        .rank-table tbody tr { transition: background .15s; }
+        .rank-table tbody tr:hover { background: var(--primary-pale); }
+        .rank-table td { padding: 12px 14px; border-bottom: 1px solid var(--g100); vertical-align: middle; font-size: 13px; }
+        .rank-medal { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .medal-1 { background: linear-gradient(135deg, #fef08a, #f59e0b); }
+        .medal-2 { background: linear-gradient(135deg, #e5e7eb, #9ca3af); }
+        .medal-3 { background: linear-gradient(135deg, #fed7aa, #ea580c); }
+        .medal-n { background: var(--g100); color: var(--g600); font-size: 13px; font-weight: 700; }
+        .reporter-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+        .rank-name-cell { display: flex; align-items: center; gap: 10px; }
+        .rank-name { font-size: 13.5px; font-weight: 700; color: var(--g900); }
+        .rank-email { font-size: 11.5px; color: var(--g500); }
+        .pts-badge { font-size: 13px; font-weight: 700; color: var(--primary); background: var(--primary-pale); padding: 4px 10px; border-radius: 20px; display: inline-block; white-space: nowrap; }
+        .pts-badge.gold-pts { color: #92400e; background: #fef3c7; }
+        .rank-1-row { background: linear-gradient(90deg, #fffbeb, #fef9e7) !important; }
+        .btn-reward { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none; padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all .2s; white-space: nowrap; }
+        .btn-reward:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,.4); }
+        .btn-details-sm { background: var(--g100); color: var(--g700); border: none; padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all .2s; white-space: nowrap; margin-right: 4px; }
+        .btn-details-sm:hover { background: var(--g200); }
+
+        /* REPORTER DETAILS MODAL */
+        .reporter-detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--g100); }
+        .reporter-detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-l)); color: #fff; font-size: 24px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .reporter-detail-info h3 { font-size: 18px; font-weight: 800; color: var(--g900); margin-bottom: 4px; }
+        .reporter-detail-info p { font-size: 13px; color: var(--g500); }
+        .reporter-stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .reporter-stat-box { background: var(--g50); border-radius: 12px; padding: 14px; text-align: center; border: 1.5px solid var(--g200); }
+        .reporter-stat-val { font-size: 24px; font-weight: 800; color: var(--primary); }
+        .reporter-stat-lbl { font-size: 11px; font-weight: 600; color: var(--g500); margin-top: 4px; }
+        .reporter-field { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--g100); }
+        .reporter-field:last-child { border-bottom: none; }
+        .reporter-field-label { font-size: 12px; font-weight: 700; color: var(--g500); }
+        .reporter-field-val { font-size: 13.5px; font-weight: 600; color: var(--g800); }
+        .status-chip { padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
+        .status-chip.active { background: #dcfce7; color: #166534; }
+        .status-chip.blocked { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 
@@ -3621,6 +3668,44 @@
         </div>
     </div>
 
+    <!-- Reporter Details Modal -->
+    <div class="modal-overlay" id="reporterDetailsModal" onclick="closeModalBg(event,'reporterDetailsModal')">
+        <div class="modal" style="width:480px">
+            <div class="modal-header">
+                <h3 id="reporterDetailsTitle">👤 تفاصيل المُبلِّغ</h3>
+                <span class="modal-close" onclick="closeModal('reporterDetailsModal')">✕</span>
+            </div>
+            <div class="modal-body" style="padding:20px 25px">
+                <div class="reporter-detail-header">
+                    <div class="reporter-detail-avatar" id="rdAvatar">م</div>
+                    <div class="reporter-detail-info">
+                        <h3 id="rdName">—</h3>
+                        <p id="rdEmail">—</p>
+                    </div>
+                </div>
+                <div class="reporter-stats-grid">
+                    <div class="reporter-stat-box">
+                        <div class="reporter-stat-val" id="rdTotalReports">0</div>
+                        <div class="reporter-stat-lbl" id="rdLblReports">بلاغات</div>
+                    </div>
+                    <div class="reporter-stat-box">
+                        <div class="reporter-stat-val" id="rdPendingReports">0</div>
+                        <div class="reporter-stat-lbl" id="rdLblPending">معلقة</div>
+                    </div>
+                    <div class="reporter-stat-box">
+                        <div class="reporter-stat-val" id="rdDoneReports">0</div>
+                        <div class="reporter-stat-lbl" id="rdLblDone">مكتملة</div>
+                    </div>
+                </div>
+                <div id="rdFields"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-lg outline" onclick="closeModal('reporterDetailsModal')" id="rdBtnClose">إغلاق</button>
+                <button class="btn-lg danger" id="rdBtnBlock" onclick=""></button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <!-- ══ FIREBASE ══ -->
@@ -3720,6 +3805,9 @@
                         aiScore: data.aiScore || 0,
                         aiSource: data.aiSource || '—',
                         isReadByAdmin: data.isReadByAdmin || false,
+                        workStartNotifSent: data.workStartNotifSent || false,
+                        reporterName: data.reporter || data.reporter_name || 'مجهول',
+                        reporterEmail: data.reporter_email || data.userId || data.userUid || data.studentUid || '',
                     };
                 });
 
@@ -3844,6 +3932,19 @@
             },
             async unblockUser(uid) {
                 await updateDoc(doc(db, "users", uid), { isBlocked: false });
+            },
+            async sendNotificationToUser(reporterUid, titleKey, msgKey) {
+                try {
+                    const userSnap = await getDoc(doc(db, "users", reporterUid));
+                    const userData = userSnap.exists() ? userSnap.data() : {};
+                    const userLang = userData.language || 'ar';
+                    const TL = { ar: { t: T.ar[titleKey] || titleKey, m: T.ar[msgKey] || msgKey }, fr: { t: T.fr[titleKey] || titleKey, m: T.fr[msgKey] || msgKey }, en: { t: T.en[titleKey] || titleKey, m: T.en[msgKey] || msgKey } };
+                    const chosen = TL[userLang] || TL.ar;
+                    await addDoc(collection(db, "notifications"), {
+                        userUid: reporterUid, title: chosen.t, message: chosen.m,
+                        readed: false, createdAt: serverTimestamp()
+                    });
+                } catch (e) { console.error('sendNotificationToUser error:', e); }
             }
         };
 
@@ -3957,7 +4058,15 @@
                 spam_unknown: "مجهول", ai_labels: "العناصر المكتشفة",
                 late_start_title: '⚠️ تأخر في بدء البلاغ', late_start_desc: 'لقد تجاوز هذا البلاغ 3 أيام منذ إنشائه. يرجى تقديم سبب التأخير وإرفاق مستند رسمي.',
                 lbl_late_reason: 'سبب التأخير', lbl_late_file: 'مستند رسمي (اختياري / إلزامي)', btn_submit_late: 'تأكيد وبدء',
-                log_late_start: 'تأخر في البدء'
+                log_late_start: 'تأخر في البدء',
+                notif_received_title: 'تم استلام بلاغك ✅', notif_received_msg: 'لقد وصل بلاغك إلى فريق الصيانة وسيتم مراجعته.',
+                notif_work_started_title: 'بلاغك قيد العمل 🔧', notif_work_started_msg: 'تم بدء العمل على بلاغك! شكراً على مساهمتك، لقد حصلت على نقاط 🎉',
+                notif_reward_title: '🏆 تهانينا! أنت المُبلِّغ الأول', notif_reward_msg: 'لقد فزت بالمرتبة الأولى بين المُبلِّغين! يُرجى التوجه إلى الإدارة لاستلام شهادة التقدير الخاصة بك.',
+                rank_reporters: '🏆 تصنيف المُبلِّغين', rank_col_rank: 'الرتبة', rank_col_name: 'المُبلِّغ', rank_col_reports: 'البلاغات', rank_col_pts: 'النقاط', rank_col_status: 'الحالة', rank_col_actions: 'إجراءات',
+                btn_reward: '🏅 مكافأة', btn_details: '👁 تفاصيل',
+                rd_title: 'ملف المُبلِّغ', rd_lbl_reports: 'البلاغات', rd_lbl_pending: 'معلقة', rd_lbl_done: 'مكتملة',
+                rd_role: 'الدور', rd_joined: 'تاريخ الانضمام', rd_status: 'الحالة', rd_lbl_block: '⛔ حظر الحساب', rd_lbl_unblock: '✅ رفع الحظر',
+                err_workflow: '⚠ لا يمكن الانتقال مباشرة من معلق إلى مكتمل. يجب بدء المعالجة أولاً.'
             },
             fr: {
                 app_title: "Maintenance", app_sub: "Complexe Informatique", univ: "Université de Laghouat",
@@ -4020,7 +4129,15 @@
                 spam_unknown: "Inconnu", ai_labels: "Éléments détectés",
                 late_start_title: '⚠️ Retard de Démarrage', late_start_desc: 'Ce signalement a dépassé 3 jours depuis sa création. Veuillez fournir la raison du retard et joindre un document officiel.',
                 lbl_late_reason: 'Raison du retard', lbl_late_file: 'Document officiel (optionnel / obligatoire)', btn_submit_late: 'Confirmer et Démarrer',
-                log_late_start: 'Démarrage Tardif'
+                log_late_start: 'Démarrage Tardif',
+                notif_received_title: 'Signalement reçu ✅', notif_received_msg: "Votre signalement a bien été reçu par l'équipe de maintenance.",
+                notif_work_started_title: 'Signalement en cours 🔧', notif_work_started_msg: 'Les travaux ont commencé sur votre signalement ! Merci pour votre contribution, vous avez gagné des points 🎉',
+                notif_reward_title: '🏆 Félicitations ! Vous êtes le meilleur', notif_reward_msg: 'Vous avez remporté la 1ère place ! Veuillez vous rendre à la direction pour récupérer votre certificat.',
+                rank_reporters: '🏆 Classement', rank_col_rank: 'Rang', rank_col_name: 'Rapporteur', rank_col_reports: 'Signalements', rank_col_pts: 'Points', rank_col_status: 'Statut', rank_col_actions: 'Actions',
+                btn_reward: '🏅 Récompenser', btn_details: '👁 Détails',
+                rd_title: 'Profil Rapporteur', rd_lbl_reports: 'Signalements', rd_lbl_pending: 'En attente', rd_lbl_done: 'Terminés',
+                rd_role: 'Rôle', rd_joined: "Date d'inscription", rd_status: 'Statut', rd_lbl_block: '⛔ Bloquer', rd_lbl_unblock: '✅ Débloquer',
+                err_workflow: '⚠ Impossible de passer directement de En attente à Terminé.'
             },
             en: {
                 app_title: "Maintenance Panel", app_sub: "CS Complex", univ: "University of Laghouat",
@@ -4079,6 +4196,17 @@
                 spam_is_spam: "🚫 Fake", spam_is_real: "✅ Real", spam_checking: "⏳ Checking", spam_no_image: "No image",
                 spam_block: "⛔ Block Account", spam_unblock: "✅ Unblock Account", spam_del: "🗑️ Delete", spam_blocked: "Account blocked", spam_unblocked: "Account unblocked",
                 spam_unknown: "Unknown", ai_labels: "Detected items",
+                late_start_title: '⚠️ Late Start', late_start_desc: 'This report has exceeded 3 days since creation. Please provide the reason for the delay and attach an official document.',
+                lbl_late_reason: 'Delay Reason', lbl_late_file: 'Official Document (Optional / Required)', btn_submit_late: 'Confirm & Start',
+                log_late_start: 'Late Start',
+                notif_received_title: 'Report Received ✅', notif_received_msg: 'Your report has been received by the maintenance team and will be reviewed shortly.',
+                notif_work_started_title: 'Report In Progress 🔧', notif_work_started_msg: 'Work has started on your report! Thank you for your contribution — you earned points 🎉',
+                notif_reward_title: '🏆 Congratulations! You are #1', notif_reward_msg: 'You have won the top reporter rank! Please visit the administration to collect your certificate.',
+                rank_reporters: '🏆 Reporter Rankings', rank_col_rank: 'Rank', rank_col_name: 'Reporter', rank_col_reports: 'Reports', rank_col_pts: 'Points', rank_col_status: 'Status', rank_col_actions: 'Actions',
+                btn_reward: '🏅 Reward', btn_details: '👁 Details',
+                rd_title: 'Reporter Profile', rd_lbl_reports: 'Reports', rd_lbl_pending: 'Pending', rd_lbl_done: 'Completed',
+                rd_role: 'Role', rd_joined: 'Joined', rd_status: 'Status', rd_lbl_block: '⛔ Block Account', rd_lbl_unblock: '✅ Unblock',
+                err_workflow: '⚠ Cannot skip from Pending directly to Complete. Start processing first.'
             }
         };
 
@@ -4170,6 +4298,11 @@
 
         async function markRead(id) {
             try {
+                const report = reports.find(r => r.firestoreId === id);
+                // First time being read — send "received" notification to reporter
+                if (report && !report.isReadByAdmin && report.reporterUid) {
+                    window._db.sendNotificationToUser(report.reporterUid, 'notif_received_title', 'notif_received_msg').catch(() => {});
+                }
                 await updateDoc(doc(db, "reports", id), { isReadByAdmin: true });
             } catch (e) { console.error("Error marking report read:", e); }
         }
@@ -4335,20 +4468,39 @@
                 const defectName = t(r.defect);
                 const localizedDefect = (categoryName && categoryName !== r.category ? categoryName + ' — ' + defectName : defectName) + (r.reason && r.reason !== '—' ? ` (${t(r.reason)})` : '');
                 let ab = `<button class="btn-sm btn-ghost" onclick="openReportModal('${r.firestoreId}')">${t('btn_view')}</button>`;
-                if (r.status === 'pending') ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
+                const isWorker = window._adminRole === 'worker';
+
+                if (r.status === 'pending') {
+                    ab += `<button class="btn-sm btn-primary" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_start')}</button>`;
+                    // Workers cannot skip to complete
+                    // Admins get no direct-complete from pending either (enforce workflow)
+                }
+
                 if (r.status === 'inprogress') {
-                    const isWorker = window._adminRole === 'worker';
                     const timeSinceStart = r.startedAt ? (Date.now() - r.startedAt) : 0;
-                    const disableBack = isWorker && timeSinceStart > 15 * 60 * 1000;
-                    
+                    const passed15min = timeSinceStart > 15 * 60 * 1000;
+                    const disableBack = isWorker && passed15min;
+
                     if (disableBack) {
-                        ab += `<button class="btn-sm btn-warn" disabled style="opacity:0.5;cursor:not-allowed" title="انتهى وقت الرجوع (15 دقيقة)">${t('btn_back_pending')}</button>`;
+                        ab += `<button class="btn-sm btn-warn" disabled style="opacity:0.45;cursor:not-allowed" title="${t('err_15min') || 'Time window expired'}">${t('btn_back_pending')}</button>`;
                     } else {
                         ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','pending')">${t('btn_back_pending')}</button>`;
                     }
                     ab += `<button class="btn-sm btn-success" onclick="changeStatus('${r.firestoreId}','complete')">${t('btn_finish')}</button>`;
+
+                    // Trigger deferred 15-min notification to reporter (once)
+                    if (passed15min && !r.workStartNotifSent && r.reporterUid) {
+                        checkAndSendDeferredNotif(r);
+                    }
                 }
-                if (r.status === 'complete') ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_back_inprog')}</button>`;
+
+                if (r.status === 'complete') {
+                    // Only admins can revert a completed report
+                    if (!isWorker) {
+                        ab += `<button class="btn-sm btn-warn" onclick="changeStatus('${r.firestoreId}','inprogress')">${t('btn_back_inprog')}</button>`;
+                    }
+                }
+
                 ab += `<button class="btn-sm btn-danger-sm" onclick="openDeleteReportModal('${r.firestoreId}')">${t('btn_del_report')}</button>`;
                 const aiStatus = r.aiCheckDone ? (r.aiSpam ? '' : '<span class="ai-indicator pass" style="margin-left:5px" title="AI Verified">🛡️</span>') : (r.hasImage ? '<span class="ai-indicator pending" style="margin-left:5px" title="AI Checking...">⏳</span>' : '');
                 return `<tr class="row-${cls} status-${r.status}">
@@ -4399,16 +4551,30 @@
             c.innerHTML = sortedUsers.map((u, i) => `<div class="leader-item"><span style="font-size:19px">${icons[i] || '●'}</span><div><div class="leader-name">${u.name}</div><div class="leader-sub">${u.email}</div></div><span class="leader-pts">${u.points} ${t('pts')}</span></div>`).join('');
         }
 
+        // Track reports where deferred notification has been triggered this session
+        const _deferredNotifTriggered = new Set();
+        async function checkAndSendDeferredNotif(r) {
+            if (_deferredNotifTriggered.has(r.firestoreId)) return;
+            _deferredNotifTriggered.add(r.firestoreId);
+            try {
+                await updateDoc(doc(db, "reports", r.firestoreId), { workStartNotifSent: true });
+                await window._db.sendNotificationToUser(r.reporterUid, 'notif_work_started_title', 'notif_work_started_msg');
+            } catch (e) { console.error('Deferred notif error:', e); }
+        }
+
         async function changeStatus(firestoreId, newStatus) {
             const report = reports.find(r => r.firestoreId === firestoreId);
             const prev = report?.status;
 
+            // Block pending → complete (must go through inprogress)
+            if (newStatus === 'complete' && prev === 'pending') {
+                showToast(t('err_workflow'), true);
+                return;
+            }
+
             if (newStatus === 'inprogress' && prev === 'pending') {
                 const isLate = report.ts && (Date.now() - report.ts > 3 * 24 * 60 * 60 * 1000);
-                if (isLate) {
-                    openLateStartModal(firestoreId);
-                    return;
-                }
+                if (isLate) { openLateStartModal(firestoreId); return; }
             }
 
             try {
@@ -4760,16 +4926,132 @@
         function buildLeaderboardFull() {
             const c = document.getElementById('leaderboardFull'); if (!c) return;
             if (!window._usersMap) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
-            
-            const sortedUsers = Object.entries(window._usersMap)
-                .map(([uid, u]) => ({ name: u.name || u.email || 'مجهول', email: u.email || '—', points: u.points || 0 }))
-                .filter(u => u.points > 0)
-                .sort((a, b) => b.points - a.points)
-                .slice(0, 6);
 
-            if (!sortedUsers.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
-            const rankCls = ['gold', '', '', '', '', ''], rbCls = ['rb-1', 'rb-2', 'rb-3', 'rb-n', 'rb-n', 'rb-n'], rankIcons = ['🥇', '🥈', '🥉', '4', '5', '6'];
-            c.innerHTML = sortedUsers.map((u, i) => `<div class="lb-item ${rankCls[i]}"><div class="rank-badge ${rbCls[i]}">${rankIcons[i]}</div><div class="lb-info"><div class="lb-name">${u.name}</div><div class="lb-sub">${u.email}</div></div><div><div class="lb-pts ${i === 0 ? 'gold-c' : ''}">${u.points} <span style="font-size:11px;font-weight:600">${t('pts')}</span></div></div></div>`).join('');
+            const sortedUsers = Object.entries(window._usersMap)
+                .map(([uid, u]) => ({
+                    uid,
+                    name: u.name || u.email || 'مجهول',
+                    email: u.email || '—',
+                    points: u.points || 0,
+                    isBlocked: u.isBlocked === true,
+                    role: u.role || '—'
+                }))
+                .sort((a, b) => b.points - a.points);
+
+            const allReporters = sortedUsers.filter(u => u.role !== 'admin' && u.role !== 'worker');
+            const displayUsers = allReporters.length ? allReporters : sortedUsers;
+
+            if (!displayUsers.length) { c.innerHTML = `<div class="empty-state"><p>${t('empty')}</p></div>`; return; }
+
+            const medalClasses = ['medal-1', 'medal-2', 'medal-3'];
+            const medalIcons = ['🥇', '🥈', '🥉'];
+            const isAdmin = window._adminRole === 'admin';
+
+            const reportCountMap = {};
+            reports.forEach(r => { if (r.reporterUid) reportCountMap[r.reporterUid] = (reportCountMap[r.reporterUid] || 0) + 1; });
+
+            c.innerHTML = `
+            <div class="rank-table-wrap">
+              <table class="rank-table">
+                <thead><tr>
+                  <th>${t('rank_col_rank')}</th>
+                  <th>${t('rank_col_name')}</th>
+                  <th>${t('rank_col_email')}</th>
+                  <th>${t('rank_col_reports')}</th>
+                  <th>${t('rank_col_pts')}</th>
+                  <th>${t('rank_col_status')}</th>
+                  ${isAdmin ? `<th>${t('rank_col_actions')}</th>` : ''}
+                </tr></thead>
+                <tbody>
+                ${displayUsers.map((u, i) => {
+                    const medCls = medalClasses[i] || 'medal-n';
+                    const medIcon = medalIcons[i] || (i + 1);
+                    const initials = u.name.charAt(0).toUpperCase();
+                    const rCount = reportCountMap[u.uid] || 0;
+                    const ptsBadgeCls = i === 0 ? 'gold-pts' : '';
+                    const rowCls = i === 0 ? 'rank-1-row' : '';
+                    const statusChip = u.isBlocked
+                        ? `<span class="status-chip blocked">🚫 ${t('spam_blocked') || 'Blocked'}</span>`
+                        : `<span class="status-chip active">✅ ${t('act_yes') || 'Active'}</span>`;
+                    let actions = '';
+                    if (isAdmin) {
+                        if (i === 0) {
+                            actions += `<button class="btn-reward" onclick="rewardReporter('${u.uid}')" title="${t('btn_reward')}">${t('btn_reward')}</button> `;
+                        }
+                        actions += `<button class="btn-details-sm" onclick="openReporterDetails('${u.uid}')">${t('btn_details')}</button>`;
+                        if (u.isBlocked) {
+                            actions += ` <button class="btn-sm btn-success" style="font-size:11px;padding:4px 8px" onclick="unblockUser('${u.uid}')">${t('rd_lbl_unblock')}</button>`;
+                        } else {
+                            actions += ` <button class="btn-sm btn-danger-sm" style="font-size:11px;padding:4px 8px" onclick="blockUser('${u.uid}')">${t('rd_lbl_block')}</button>`;
+                        }
+                    }
+                    return `<tr class="${rowCls}">
+                      <td><div class="rank-medal ${medCls}">${medIcon}</div></td>
+                      <td><div class="rank-name-cell"><div class="reporter-avatar">${initials}</div><div><div class="rank-name">${u.name}</div></div></div></td>
+                      <td><span class="rank-email">${u.email}</span></td>
+                      <td><b>${rCount}</b></td>
+                      <td><span class="pts-badge ${ptsBadgeCls}">${u.points} ${t('pts')}</span></td>
+                      <td>${statusChip}</td>
+                      ${isAdmin ? `<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${actions}</div></td>` : ''}
+                    </tr>`;
+                }).join('')}
+                </tbody>
+              </table>
+            </div>`;
+        }
+
+        async function rewardReporter(uid) {
+            if (window._adminRole !== 'admin') return;
+            try {
+                await window._db.sendNotificationToUser(uid, 'notif_reward_title', 'notif_reward_msg');
+                showToast('🏆 ' + (t('notif_reward_title') || 'Reward sent!'), '', 'success');
+            } catch (e) { showToast(t('toast_error'), true); }
+        }
+
+        function openReporterDetails(uid) {
+            const u = window._usersMap?.[uid];
+            if (!u) return;
+
+            const name = u.name || u.email || 'مجهول';
+            const email = u.email || '—';
+            const isBlocked = u.isBlocked === true;
+            const initials = name.charAt(0).toUpperCase();
+
+            const userReports = reports.filter(r => r.reporterUid === uid);
+            const totalR = userReports.length;
+            const pendingR = userReports.filter(r => r.status === 'pending').length;
+            const doneR = userReports.filter(r => r.status === 'complete').length;
+
+            document.getElementById('rdAvatar').textContent = initials;
+            document.getElementById('rdName').textContent = name;
+            document.getElementById('rdEmail').textContent = email;
+            document.getElementById('rdTotalReports').textContent = totalR;
+            document.getElementById('rdPendingReports').textContent = pendingR;
+            document.getElementById('rdDoneReports').textContent = doneR;
+            document.getElementById('rdLblReports').textContent = t('rd_lbl_reports');
+            document.getElementById('rdLblPending').textContent = t('rd_lbl_pending');
+            document.getElementById('rdLblDone').textContent = t('rd_lbl_done');
+            document.getElementById('reporterDetailsTitle').textContent = '👤 ' + t('rd_title');
+            document.getElementById('rdBtnClose').textContent = t('btn_close');
+
+            const blockBtn = document.getElementById('rdBtnBlock');
+            if (isBlocked) {
+                blockBtn.textContent = t('rd_lbl_unblock');
+                blockBtn.className = 'btn-lg primary';
+                blockBtn.onclick = async () => { await unblockUser(uid); if (window._usersMap[uid]) window._usersMap[uid].isBlocked = false; blockBtn.textContent = t('rd_lbl_block'); blockBtn.className = 'btn-lg danger'; buildLeaderboardFull(); };
+            } else {
+                blockBtn.textContent = t('rd_lbl_block');
+                blockBtn.className = 'btn-lg danger';
+                blockBtn.onclick = async () => { await blockUser(uid); if (window._usersMap[uid]) window._usersMap[uid].isBlocked = true; blockBtn.textContent = t('rd_lbl_unblock'); blockBtn.className = 'btn-lg primary'; buildLeaderboardFull(); };
+            }
+
+            document.getElementById('rdFields').innerHTML = `
+              <div class="reporter-field"><span class="reporter-field-label">${t('rd_role')}</span><span class="reporter-field-val">${u.role || '—'}</span></div>
+              <div class="reporter-field"><span class="reporter-field-label">${t('rd_status')}</span><span class="reporter-field-val">${isBlocked ? `<span class="status-chip blocked">🚫 ${t('spam_blocked')}</span>` : `<span class="status-chip active">✅ ${t('act_yes')}</span>`}</span></div>
+              <div class="reporter-field"><span class="reporter-field-label">${t('rank_col_pts')}</span><span class="reporter-field-val" style="color:var(--primary);font-weight:800">${u.points || 0} ${t('pts')}</span></div>
+            `;
+
+            openModal('reporterDetailsModal');
         }
         function setPeriod(el, p) { document.querySelectorAll('.pb').forEach(b => b.classList.remove('active')); el.classList.add('active'); statsPeriod = p; buildStats(); }
 
@@ -4846,7 +5128,7 @@
                 await window._db.blockUser(uid);
                 if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isBlocked = true;
                 showToast(t('spam_blocked'), false, 'success');
-                renderSpamTable();
+                renderSpamTable(); buildLeaderboardFull();
             } catch (e) {
                 showToast(t('toast_error'), true);
             }
@@ -4858,7 +5140,7 @@
                 await window._db.unblockUser(uid);
                 if (window._usersMap && window._usersMap[uid]) window._usersMap[uid].isBlocked = false;
                 showToast(t('spam_unblocked'), false, 'success');
-                renderSpamTable();
+                renderSpamTable(); buildLeaderboardFull();
             } catch (e) {
                 showToast(t('toast_error'), true);
             }
@@ -4894,13 +5176,13 @@
                 window._db.loadUsers().then(u => {
                     window._usersMap = u;
                     updateNotificationsFromReports();
-                    renderTable(); renderRoomBreakdown(); renderLeaderboard();
+                    renderTable(); renderRoomBreakdown(); renderLeaderboard(); buildLeaderboardFull();
                     if (document.getElementById('page-stats').classList.contains('active')) buildStats();
                     if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
                 }).catch(e => {
                     console.error("Error loading users:", e);
                     updateNotificationsFromReports();
-                    renderTable(); renderRoomBreakdown(); renderLeaderboard();
+                    renderTable(); renderRoomBreakdown(); renderLeaderboard(); buildLeaderboardFull();
                     if (document.getElementById('page-stats').classList.contains('active')) buildStats();
                     if (document.getElementById('page-spam').classList.contains('active')) renderSpamTable();
                 });
